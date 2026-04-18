@@ -79,8 +79,7 @@ export type Format =
   | "tabata"
   | "ygig"
   | "interval"
-  | "strength"
-  | "sc_couplet";
+  | "strength";
 
 export type RepUnit = "reps" | "m" | "cal" | "sec";
 
@@ -117,20 +116,36 @@ export interface GeneratedSegment {
   strengthSet?: { sets: number; scheme: RepScheme; restSec: number };
 }
 
+// A single block is a self-contained mini-workout with its own format.
+// Workouts are composed of 2–3 blocks with rest between them.
+export interface GeneratedBlock {
+  id: string;
+  // "A", "B", "C"
+  label: string;
+  // Short human-readable headline, e.g. "AMRAP 8 min", "Main Lift".
+  title: string;
+  format: Format;
+  config: WorkoutConfig;
+  segments: GeneratedSegment[];
+  // "21-15-9", "5 RFT", etc.
+  structure: string;
+  // How long this block runs on the timer. For strength blocks this is a
+  // soft target; the user can finish early or go over and the next block
+  // starts when the timer reaches this mark.
+  durationSec: number;
+  // Seconds of rest after this block. 0 for the last block.
+  restAfterSec: number;
+}
+
 export interface GeneratedWorkout {
   id: string;
   title: string;
-  format: Format;
   type: WorkoutType;
   intensity: Intensity;
   equipmentSets: EquipmentSet[];
   timeCapMinutes: number;
-  // Format-specific config used by the timer.
-  config: WorkoutConfig;
-  // Ordered movement list for display.
-  segments: GeneratedSegment[];
-  // Human-readable structure string ("21-15-9", "5 RFT", etc.)
-  structure: string;
+  // Ordered list of blocks. Each has its own format, config, and segments.
+  blocks: GeneratedBlock[];
   notes?: string;
 }
 
@@ -144,17 +159,9 @@ export type WorkoutConfig =
   | { format: "interval"; rounds: number; workSec: number; restSec: number }
   | {
       format: "strength";
-      // Rest target between working sets of the main lift.
+      // Rest target between working sets.
       mainRestSec: number;
-      // Rest target between accessory supersets.
       accessoryRestSec: number;
-    }
-  | {
-      format: "sc_couplet";
-      // Total session cap. Strength block runs first, then conditioning.
-      capSec: number;
-      strengthMinutes: number;
-      conditioningMinutes: number;
     };
 
 export interface FilterState {

@@ -1,16 +1,20 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import type { GeneratedWorkout, WorkoutConfig } from "@/lib/types";
-import { Pause, Play, RotateCcw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import type {
+  GeneratedBlock,
+  GeneratedWorkout,
+  WorkoutConfig,
+} from "@/lib/types";
+import { Pause, Play, RotateCcw, SkipForward } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface Props {
   workout: GeneratedWorkout;
   onRunningChange?: (running: boolean) => void;
 }
 
-// Per-format timer. The data model already encodes everything we need.
+// Multi-block timer. Sequences through blocks A → rest → B → rest → C.
 export function Timer({ workout, onRunningChange }: Props) {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -18,6 +22,8 @@ export function Timer({ workout, onRunningChange }: Props) {
   const offsetRef = useRef(0);
   const onRunningChangeRef = useRef(onRunningChange);
   onRunningChangeRef.current = onRunningChange;
+
+  const totalSec = useMemo(() => totalDurationSec(workout), [workout]);
 
   useEffect(() => {
     if (!running) return;
@@ -32,7 +38,6 @@ export function Timer({ workout, onRunningChange }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [running]);
 
-  // Reset on workout change
   useEffect(() => {
     setRunning(false);
     setElapsed(0);
@@ -41,7 +46,7 @@ export function Timer({ workout, onRunningChange }: Props) {
     onRunningChangeRef.current?.(false);
   }, [workout.id]);
 
-  const phase = derivePhase(workout.config, elapsed);
+  const phase = deriveWorkoutPhase(workout, elapsed);
 
   function toggle() {
     if (running) {
@@ -63,6 +68,22 @@ export function Timer({ workout, onRunningChange }: Props) {
     onRunningChangeRef.current?.(false);
   }
 
+  function skipToNext() {
+    // Jump forward to the start of the next block (or to rest), skipping
+    // over the current block if finished early (common for strength).
+    const pos = locatePosition(workout, elapsed);
+    if (pos.kind === "done") return;
+    let target = elapsed;
+    if (pos.kind === "block") {
+      target = pos.cursor + workout.blocks[pos.idx].durationSec;
+    } else if (pos.kind === "rest") {
+      target = pos.cursor + workout.blocks[pos.fromIdx].restAfterSec;
+    }
+    setElapsed(target);
+    offsetRef.current = target;
+    startRef.current = null;
+  }
+
   return (
     <div className="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark p-5 sm:p-6">
       <div className="flex items-baseline justify-between gap-4">
@@ -72,7 +93,9 @@ export function Timer({ workout, onRunningChange }: Props) {
               "text-[11px] uppercase tracking-widest",
               phase.accent === "work"
                 ? "text-red-500 dark:text-red-400"
-                : "text-ink-muted"
+                : phase.accent === "rest"
+                  ? "text-sky-500 dark:text-sky-400"
+                  : "text-ink-muted"
             )}
           >
             {phase.label}
@@ -82,9 +105,9 @@ export function Timer({ workout, onRunningChange }: Props) {
           </div>
         </div>
         <div className="text-right text-xs text-ink-muted shrink-0">
-          <div>Elapsed</div>
+          <div>Session left</div>
           <div className="text-base font-medium tabular-nums text-ink dark:text-ink-dark">
-            {fmt(elapsed)}
+            {fmt(Math.max(0, totalSec - elapsed))}
           </div>
         </div>
       </div>
@@ -94,7 +117,12 @@ export function Timer({ workout, onRunningChange }: Props) {
       )}
 
       {phase.stats && phase.stats.length > 0 && (
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div
+          className={cn(
+            "mt-4 grid gap-3",
+            phase.stats.length === 2 ? "grid-cols-2" : "grid-cols-3"
+          )}
+        >
           {phase.stats.map((s) => (
             <div
               key={s.label}
@@ -103,7 +131,7 @@ export function Timer({ workout, onRunningChange }: Props) {
               <div className="text-[10px] uppercase tracking-widest text-ink-muted">
                 {s.label}
               </div>
-              <div className="text-base font-medium tabular-nums text-ink dark:text-ink-dark mt-0.5">
+              <div className="text-base font-medium tabular-nums text-ink dark:text-ink-dark mt-0.5 truncate">
                 {s.value}
               </div>
             </div>
@@ -124,9 +152,20 @@ export function Timer({ workout, onRunningChange }: Props) {
           {running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           {running ? "Pause" : elapsed > 0 ? "Resume" : "Start"}
         </button>
+        {workout.blocks.length > 1 && (
+          <button
+            onClick={skipToNext}
+            className="h-12 px-4 rounded-full border border-border dark:border-border-dark text-sm text-ink-muted hover:text-ink dark:hover:text-ink-dark inline-flex items-center gap-2 transition-colors"
+            aria-label="Skip to next phase"
+            title="Skip to next phase"
+          >
+            <SkipForward className="h-4 w-4" />
+            Skip
+          </button>
+        )}
         <button
           onClick={reset}
-          className="h-12 w-12 grid place-items-center rounded-full border border-border dark:border-border-dark text-ink-muted hover:text-ink dark:hover:text-ink-dark transition-colors"
+          className="h-12 w-12 grid place-items-center rounded-full border border-border dark:border-border-dark text-ink-muted hover:text-ink dark:hover:text-ink-dark transition-colors ml-auto"
           aria-label="Reset"
         >
           <RotateCcw className="h-4 w-4" />
@@ -143,6 +182,38 @@ function fmt(sec: number) {
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
+function totalDurationSec(w: GeneratedWorkout): number {
+  return w.blocks.reduce((a, b) => a + b.durationSec + b.restAfterSec, 0);
+}
+
+type Position =
+  | { kind: "block"; idx: number; cursor: number; blockElapsed: number }
+  | { kind: "rest"; fromIdx: number; cursor: number; restElapsed: number }
+  | { kind: "done" };
+
+function locatePosition(w: GeneratedWorkout, elapsed: number): Position {
+  let cursor = 0;
+  for (let i = 0; i < w.blocks.length; i++) {
+    const b = w.blocks[i];
+    if (elapsed < cursor + b.durationSec) {
+      return { kind: "block", idx: i, cursor, blockElapsed: elapsed - cursor };
+    }
+    cursor += b.durationSec;
+    if (b.restAfterSec > 0) {
+      if (elapsed < cursor + b.restAfterSec) {
+        return {
+          kind: "rest",
+          fromIdx: i,
+          cursor,
+          restElapsed: elapsed - cursor,
+        };
+      }
+      cursor += b.restAfterSec;
+    }
+  }
+  return { kind: "done" };
+}
+
 interface Phase {
   label: string;
   display: string;
@@ -151,21 +222,73 @@ interface Phase {
   accent?: "work" | "rest" | "neutral";
 }
 
-function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
+function deriveWorkoutPhase(w: GeneratedWorkout, elapsed: number): Phase {
+  const pos = locatePosition(w, elapsed);
+  if (pos.kind === "done") {
+    return { label: "Session complete", display: "0:00", subline: "Time." };
+  }
+  if (pos.kind === "rest") {
+    const from = w.blocks[pos.fromIdx];
+    const next = w.blocks[pos.fromIdx + 1];
+    const remaining = Math.max(0, from.restAfterSec - pos.restElapsed);
+    return {
+      label: `REST — Block ${from.label} → ${next?.label ?? "—"}`,
+      display: fmt(remaining),
+      subline: next ? `Up next: ${next.title}` : undefined,
+      accent: "rest",
+      stats: [
+        { label: "Coming", value: next?.title ?? "—" },
+        { label: "Exercises", value: `${next?.segments.length ?? 0}` },
+      ],
+    };
+  }
+
+  const block = w.blocks[pos.idx];
+  const inner = derivePhaseForBlock(block, pos.blockElapsed);
+  const blockTag = `Block ${block.label}`;
+  const blockProgress = `${pos.idx + 1}/${w.blocks.length}`;
+  const label = inner.label
+    ? `${blockTag} · ${inner.label}`
+    : `${blockTag} · ${block.title}`;
+
+  // Prepend a Block stat, then keep up to 2 of the inner stats so we stay
+  // within three cells.
+  const innerStats = inner.stats ?? [];
+  const stats: { label: string; value: string }[] = [
+    { label: "Block", value: `${block.label} · ${blockProgress}` },
+    ...innerStats.slice(0, 2),
+  ];
+
+  return {
+    ...inner,
+    label,
+    stats,
+  };
+}
+
+function derivePhaseForBlock(block: GeneratedBlock, elapsed: number): Phase {
+  return derivePhase(block.config, elapsed, block);
+}
+
+function derivePhase(
+  config: WorkoutConfig,
+  elapsed: number,
+  block: GeneratedBlock
+): Phase {
+  const blockLeft = Math.max(0, block.durationSec - elapsed);
   switch (config.format) {
     case "amrap": {
       const remaining = Math.max(0, config.durationSec - elapsed);
       return {
-        label: `AMRAP — ${config.durationSec / 60} min`,
+        label: `AMRAP ${config.durationSec / 60}`,
         display: fmt(remaining),
-        subline: remaining === 0 ? "Time." : "Score = total rounds + reps",
-        stats: [{ label: "Elapsed", value: fmt(elapsed) }],
+        subline: remaining === 0 ? "Time." : "Score = rounds + reps",
+        stats: [{ label: "Block left", value: fmt(blockLeft) }],
       };
     }
     case "for_time":
     case "chipper": {
       const cap = config.capSec;
-      const capLeft = cap ? Math.max(0, cap - elapsed) : 0;
       return {
         label: cap ? `Cap ${cap / 60} min` : "For Time",
         display: fmt(elapsed),
@@ -173,7 +296,7 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
           cap && elapsed >= cap
             ? "Cap reached."
             : "Score = elapsed time to finish",
-        stats: cap ? [{ label: "Cap left", value: fmt(capLeft) }] : undefined,
+        stats: cap ? [{ label: "Cap left", value: fmt(Math.max(0, cap - elapsed)) }] : undefined,
       };
     }
     case "emom": {
@@ -183,9 +306,8 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
       const remainingInMin = Math.max(0, 60 - inMinute);
       const station = ((minute - 1) % config.stations) + 1;
       const done = elapsed >= total;
-      const totalLeft = Math.max(0, total - elapsed);
       return {
-        label: done ? "EMOM Complete" : `EMOM — Min ${minute} of ${config.minutes}`,
+        label: done ? "EMOM Complete" : `EMOM · Min ${minute}/${config.minutes}`,
         display: done ? "0:00" : fmt(remainingInMin),
         subline: done ? "Time." : `Station ${station} of ${config.stations}`,
         stats: done
@@ -193,14 +315,12 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
           : [
               { label: "Round", value: `${minute}/${config.minutes}` },
               { label: "Station", value: `${station}/${config.stations}` },
-              { label: "Total left", value: fmt(totalLeft) },
             ],
       };
     }
     case "tabata": {
       const cycle = config.workSec + config.restSec;
       const totalCycles = config.rounds * config.movements;
-      const totalSec = cycle * totalCycles;
       const cycleIdx = Math.floor(elapsed / cycle);
       const inCycle = elapsed % cycle;
       const isWork = inCycle < config.workSec;
@@ -210,12 +330,11 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
       const done = cycleIdx >= totalCycles;
       const round = Math.floor(cycleIdx / config.movements) + 1;
       const movementIdx = (cycleIdx % config.movements) + 1;
-      const totalLeft = Math.max(0, totalSec - elapsed);
       return {
         label: done
           ? "Tabata Complete"
           : isWork
-            ? `WORK — Round ${round}/${config.rounds}`
+            ? `WORK · Rd ${round}/${config.rounds}`
             : "REST",
         display: done ? "0:00" : Math.ceil(remaining).toString(),
         subline: done
@@ -232,23 +351,19 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
                 label: "Movement",
                 value: `${movementIdx}/${config.movements}`,
               },
-              { label: "Total left", value: fmt(totalLeft) },
             ],
       };
     }
     case "ygig": {
       const cap = config.capSec;
       return {
-        label: `YGIG — ${config.rounds} rounds, ${config.partners}-person`,
+        label: `YGIG · ${config.rounds} rds`,
         display: fmt(elapsed),
         subline:
           cap && elapsed >= cap ? "Cap reached." : "Alternate full rounds",
         stats: [
           { label: "Target", value: `${config.rounds} rds` },
-          { label: "Partners", value: `${config.partners}` },
-          ...(cap
-            ? [{ label: "Cap left", value: fmt(Math.max(0, cap - elapsed)) }]
-            : []),
+          { label: "Cap left", value: fmt(Math.max(0, cap - elapsed)) },
         ],
       };
     }
@@ -262,13 +377,12 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
         ? config.workSec - inCycle
         : cycle - inCycle;
       const done = elapsed >= totalSec;
-      const totalLeft = Math.max(0, totalSec - elapsed);
       return {
         label: done
           ? "Intervals Complete"
           : isWork
-            ? `WORK — Round ${round}/${config.rounds}`
-            : `REST — Round ${round}/${config.rounds}`,
+            ? `WORK · Rd ${round}/${config.rounds}`
+            : `REST · Rd ${round}/${config.rounds}`,
         display: done ? "0:00" : fmt(Math.ceil(remaining)),
         accent: done ? "neutral" : isWork ? "work" : "rest",
         stats: done
@@ -276,61 +390,21 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
           : [
               { label: "Round", value: `${round}/${config.rounds}` },
               { label: "Phase", value: isWork ? "Work" : "Rest" },
-              { label: "Total left", value: fmt(totalLeft) },
             ],
       };
     }
     case "strength": {
-      // Open timer: lifters rest however long they actually need. Show
-      // elapsed + the target rest between working sets as a reference.
       const restLabel =
         config.mainRestSec >= 60
           ? `${Math.round(config.mainRestSec / 60)} min`
           : `${config.mainRestSec}s`;
-      const accRestLabel =
-        config.accessoryRestSec >= 60
-          ? `${Math.round(config.accessoryRestSec / 60)} min`
-          : `${config.accessoryRestSec}s`;
       return {
         label: "Strength",
-        display: fmt(elapsed),
-        subline: "Rest as needed between working sets",
+        display: fmt(blockLeft),
+        subline: "Work your sets — skip when done.",
         stats: [
-          { label: "Main rest", value: restLabel },
-          { label: "Accessory", value: accRestLabel },
-        ],
-      };
-    }
-    case "sc_couplet": {
-      const strengthSec = config.strengthMinutes * 60;
-      const inStrength = elapsed < strengthSec;
-      const condElapsed = Math.max(0, elapsed - strengthSec);
-      const condSec = config.conditioningMinutes * 60;
-      const condRemaining = Math.max(0, condSec - condElapsed);
-      const done = elapsed >= config.capSec;
-      const sessionLeft = Math.max(0, config.capSec - elapsed);
-      if (done) {
-        return { label: "S&C Complete", display: "0:00", subline: "Time." };
-      }
-      if (inStrength) {
-        const blockLeft = Math.max(0, strengthSec - elapsed);
-        return {
-          label: `Strength block — ${config.strengthMinutes} min`,
-          display: fmt(blockLeft),
-          subline: "Work the main lift, then move to conditioning",
-          stats: [
-            { label: "Block left", value: fmt(blockLeft) },
-            { label: "Session left", value: fmt(sessionLeft) },
-          ],
-        };
-      }
-      return {
-        label: `Conditioning block — ${config.conditioningMinutes} min AMRAP`,
-        display: fmt(condRemaining),
-        subline: "Score = rounds + reps",
-        stats: [
-          { label: "Block left", value: fmt(condRemaining) },
-          { label: "Session left", value: fmt(sessionLeft) },
+          { label: "Rest target", value: restLabel },
+          { label: "Block left", value: fmt(blockLeft) },
         ],
       };
     }

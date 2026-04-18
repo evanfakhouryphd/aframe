@@ -1,9 +1,13 @@
 "use client";
 
 import { swapMovement, workoutToText } from "@/lib/engine";
-import type { GeneratedWorkout } from "@/lib/types";
+import type {
+  GeneratedBlock,
+  GeneratedSegment,
+  GeneratedWorkout,
+} from "@/lib/types";
 import { Check, Copy, Repeat } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 interface Props {
   workout: GeneratedWorkout;
@@ -23,28 +27,36 @@ export function WorkoutCard({ workout, onWorkoutChange }: Props) {
       .catch(() => {});
   }
 
-  function swap(idx: number) {
-    const segment = workout.segments[idx];
-    const replacement = swapMovement(segment.movementId, workout);
-    if (!replacement) return;
-    const segments = [...workout.segments];
-    segments[idx] = replacement;
-    onWorkoutChange({ ...workout, segments });
+  function swap(movementId: string) {
+    const result = swapMovement(movementId, workout);
+    if (!result) return;
+    const blocks = workout.blocks.map((b) => {
+      if (b.id !== result.blockId) return b;
+      return {
+        ...b,
+        segments: b.segments.map((s) =>
+          s.movementId === movementId ? result.segment : s
+        ),
+      };
+    });
+    onWorkoutChange({ ...workout, blocks });
   }
 
   return (
-    <div className="animate-slide-up">
+    <div className="animate-slide-up space-y-4">
       <div className="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark overflow-hidden">
         <div className="px-5 sm:px-6 pt-6 pb-5 border-b border-border dark:border-border-dark">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[11px] uppercase tracking-widest text-ink-muted">
-                {workout.format.replace("_", " ")} · {labelType(workout.type)}
+                {labelType(workout.type)} · {labelIntensity(workout.intensity)}
               </div>
               <h2 className="text-2xl sm:text-3xl font-semibold tracking-tightest mt-1 truncate">
                 {workout.title}
               </h2>
-              <div className="mt-1 text-sm text-ink-muted">{workout.structure}</div>
+              <div className="mt-1 text-sm text-ink-muted">
+                {workout.blocks.length} blocks · {workout.timeCapMinutes} min cap
+              </div>
             </div>
             <button
               onClick={copy}
@@ -56,74 +68,123 @@ export function WorkoutCard({ workout, onWorkoutChange }: Props) {
             </button>
           </div>
         </div>
+      </div>
 
-        <ul className="divide-y divide-border dark:divide-border-dark">
-          {workout.segments.map((s, i) => (
-            <li
-              key={`${s.movementId}-${i}`}
-              className="px-5 sm:px-6 py-4 flex items-center justify-between gap-3 group"
-            >
-              <div className="min-w-0">
-                {s.strengthSet ? (
-                  <>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-semibold tabular-nums tracking-tight">
-                        {s.strengthSet.sets} × {s.reps}
-                      </span>
-                      <span className="text-xs uppercase tracking-widest text-ink-muted">
-                        @ {s.strengthSet.scheme}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 truncate text-base">
-                      {s.movement.name}
-                      {s.loadHint && (
-                        <span className="ml-2 text-sm text-ink-muted">
-                          · {s.loadHint}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 text-xs text-ink-muted">
-                      Rest {formatRest(s.strengthSet.restSec)}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-2xl font-semibold tabular-nums tracking-tight">
-                        {s.reps}
-                      </span>
-                      <span className="text-xs uppercase tracking-widest text-ink-muted">
-                        {unitLabel(s.unit)}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 truncate text-base">
-                      {s.movement.name}
-                      {s.loadHint && (
-                        <span className="ml-2 text-sm text-ink-muted">
-                          · {s.loadHint}
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-              <button
-                onClick={() => swap(i)}
-                className="shrink-0 h-9 w-9 grid place-items-center rounded-full border border-transparent group-hover:border-border dark:group-hover:border-border-dark text-ink-muted hover:text-ink dark:hover:text-ink-dark transition-all"
-                aria-label={`Swap ${s.movement.name}`}
-                title="Swap for similar stimulus"
-              >
-                <Repeat className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
+      {workout.blocks.map((block) => (
+        <Fragment key={block.id}>
+          <BlockCard block={block} onSwap={swap} />
+          {block.restAfterSec > 0 && (
+            <RestDivider seconds={block.restAfterSec} />
+          )}
+        </Fragment>
+      ))}
+    </div>
+  );
+}
 
-        <div className="px-5 sm:px-6 py-3 border-t border-border dark:border-border-dark text-xs text-ink-muted flex items-center justify-between">
-          <span>Time cap · {workout.timeCapMinutes} min</span>
-          <span>{labelIntensity(workout.intensity)}</span>
+function BlockCard({
+  block,
+  onSwap,
+}: {
+  block: GeneratedBlock;
+  onSwap: (movementId: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark overflow-hidden">
+      <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-border dark:border-border-dark">
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-widest text-ink-muted">
+            Block {block.label} · {Math.round(block.durationSec / 60)} min
+          </div>
+          <div className="text-lg sm:text-xl font-semibold tracking-tight mt-0.5 truncate">
+            {block.title}
+          </div>
+          <div className="mt-1 text-sm text-ink-muted">{block.structure}</div>
         </div>
       </div>
+
+      <ul className="divide-y divide-border dark:divide-border-dark">
+        {block.segments.map((s, i) => (
+          <SegmentRow key={`${s.movementId}-${i}`} segment={s} onSwap={onSwap} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SegmentRow({
+  segment: s,
+  onSwap,
+}: {
+  segment: GeneratedSegment;
+  onSwap: (movementId: string) => void;
+}) {
+  return (
+    <li className="px-5 sm:px-6 py-4 flex items-center justify-between gap-3 group">
+      <div className="min-w-0">
+        {s.strengthSet ? (
+          <>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tabular-nums tracking-tight">
+                {s.strengthSet.sets} × {s.reps}
+              </span>
+              <span className="text-xs uppercase tracking-widest text-ink-muted">
+                @ {s.strengthSet.scheme}
+              </span>
+            </div>
+            <div className="mt-0.5 truncate text-base">
+              {s.movement.name}
+              {s.loadHint && (
+                <span className="ml-2 text-sm text-ink-muted">
+                  · {s.loadHint}
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 text-xs text-ink-muted">
+              Rest {formatRest(s.strengthSet.restSec)}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-3">
+              <span className="text-2xl font-semibold tabular-nums tracking-tight">
+                {s.reps}
+              </span>
+              <span className="text-xs uppercase tracking-widest text-ink-muted">
+                {unitLabel(s.unit)}
+              </span>
+            </div>
+            <div className="mt-0.5 truncate text-base">
+              {s.movement.name}
+              {s.loadHint && (
+                <span className="ml-2 text-sm text-ink-muted">
+                  · {s.loadHint}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+      <button
+        onClick={() => onSwap(s.movementId)}
+        className="shrink-0 h-9 w-9 grid place-items-center rounded-full border border-transparent group-hover:border-border dark:group-hover:border-border-dark text-ink-muted hover:text-ink dark:hover:text-ink-dark transition-all"
+        aria-label={`Swap ${s.movement.name}`}
+        title="Swap for similar stimulus"
+      >
+        <Repeat className="h-4 w-4" />
+      </button>
+    </li>
+  );
+}
+
+function RestDivider({ seconds }: { seconds: number }) {
+  return (
+    <div className="flex items-center gap-3 px-2">
+      <div className="h-px flex-1 bg-border dark:bg-border-dark" />
+      <div className="text-[11px] uppercase tracking-widest text-ink-muted">
+        Rest {formatRest(seconds)}
+      </div>
+      <div className="h-px flex-1 bg-border dark:bg-border-dark" />
     </div>
   );
 }

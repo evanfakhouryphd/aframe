@@ -3,6 +3,7 @@ import type {
   EquipmentSet,
   FilterState,
   Format,
+  GeneratedBlock,
   GeneratedSegment,
   GeneratedWorkout,
   Intensity,
@@ -13,16 +14,14 @@ import type {
 } from "./types";
 
 // ─────────────────────────────────────────────────────────────
-//  Constraint-based generator
+//  Constraint-based generator — multi-block
 // ─────────────────────────────────────────────────────────────
-//  We don't pick movements at random. We:
-//   1. Filter the library by equipment-set and minimum skill.
-//   2. Pick a format whose duration matches the time cap + intensity.
-//   3. Fill movement slots with constraints:
-//        - balance modality (M / G / W)
-//        - balance push vs pull, upper vs lower
-//        - avoid pairing two same-region high-impact moves back-to-back
-//        - bias HYROX-station movements when type === 'hyrox'
+//  Every workout is composed of 2–3 named blocks (A/B/C), each with its
+//  own format (AMRAP / EMOM / For Time / etc.) and 3–5 movements. Blocks
+//  are separated by a timed rest. Movement uniqueness is preserved across
+//  blocks where the pool allows.
+
+const REST_BETWEEN_BLOCKS_SEC = 120;
 
 function rng(seed?: number) {
   let s = seed ?? Math.floor(Math.random() * 2 ** 31);
@@ -56,12 +55,11 @@ function repsFor(m: Movement, intensity: Intensity, rand: () => number): number 
 
 function eligible(
   equipmentSets: EquipmentSet[],
-  type: WorkoutType,
+  _type: WorkoutType,
   intensity: Intensity
 ): Movement[] {
   const sets = equipmentSets.length > 0 ? equipmentSets : ["full_gym"];
   return MOVEMENTS.filter((m) => {
-    // Movement is eligible if ANY of the selected equipment-sets allow it.
     if (!m.availableIn.some((s) => sets.includes(s))) return false;
     const skillCap =
       intensity === "recovery" ? 2 : intensity === "aerobic" ? 3 : 5;
@@ -71,53 +69,24 @@ function eligible(
   });
 }
 
-// Pick the right format for the time cap + intensity.
-function chooseFormat(
-  cap: number,
-  intensity: Intensity,
-  type: WorkoutType,
-  rand: () => number
-): Format {
-  if (type === "strength") return "strength";
-  if (type === "strength_conditioning") return "sc_couplet";
-
-  if (type === "hyrox") {
-    if (cap <= 15) return "for_time";
-    if (cap <= 30) return pick<Format>(["interval", "for_time"], rand);
-    return pick<Format>(["chipper", "interval"], rand);
-  }
-
-  // CrossFit menu.
-  if (cap <= 6) return "tabata";
-  if (cap <= 12) return pick<Format>(["amrap", "for_time", "emom"], rand);
-  if (cap <= 25)
-    return pick<Format>(["amrap", "for_time", "emom", "ygig"], rand);
-  if (cap <= 40) return pick<Format>(["chipper", "amrap", "ygig"], rand);
-  if (intensity === "recovery") return "amrap";
-  return "chipper";
-}
-
-function slotsForFormat(format: Format, cap: number): number {
+function slotsForFormat(format: Format, blockMin: number): number {
   switch (format) {
     case "amrap":
-      return cap <= 10 ? 3 : cap <= 20 ? 4 : 5;
+      return blockMin <= 8 ? 3 : blockMin <= 14 ? 4 : 5;
     case "for_time":
-      return cap <= 10 ? 2 : cap <= 20 ? 3 : 4;
+      return blockMin <= 8 ? 3 : blockMin <= 15 ? 4 : 5;
     case "chipper":
-      return Math.max(5, Math.min(8, Math.round(cap / 6)));
+      return Math.max(4, Math.min(6, Math.round(blockMin / 2.5)));
     case "emom":
-      return Math.min(4, Math.max(2, Math.round(cap / 5)));
+      return Math.min(4, Math.max(3, Math.round(blockMin / 3)));
     case "tabata":
-      return cap <= 4 ? 1 : 2;
+      return blockMin <= 4 ? 1 : 2;
     case "ygig":
-      return cap <= 20 ? 3 : 4;
+      return 4;
     case "interval":
-      return cap <= 20 ? 2 : 3;
+      return blockMin <= 10 ? 3 : 4;
     case "strength":
-      // Handled by strength generator directly.
-      return 0;
-    case "sc_couplet":
-      // Handled by couplet generator directly.
+      // Filled by the strength block builder directly.
       return 0;
   }
 }
@@ -204,13 +173,17 @@ function scoreCandidate(
   return score;
 }
 
-function buildConfig(format: Format, capMinutes: number, intensity: Intensity): WorkoutConfig {
-  const capSec = capMinutes * 60;
+function buildConfig(
+  format: Format,
+  blockMin: number,
+  intensity: Intensity
+): WorkoutConfig {
+  const capSec = blockMin * 60;
   switch (format) {
     case "amrap":
       return { format: "amrap", durationSec: capSec };
     case "for_time": {
-      const rounds = capMinutes <= 10 ? 3 : capMinutes <= 20 ? 5 : 7;
+      const rounds = blockMin <= 8 ? 3 : blockMin <= 15 ? 5 : 7;
       return { format: "for_time", capSec, rounds };
     }
     case "chipper":
@@ -218,8 +191,8 @@ function buildConfig(format: Format, capMinutes: number, intensity: Intensity): 
     case "emom":
       return {
         format: "emom",
-        minutes: capMinutes,
-        stations: Math.min(4, Math.max(2, Math.round(capMinutes / 5))),
+        minutes: blockMin,
+        stations: Math.min(4, Math.max(2, Math.round(blockMin / 3))),
       };
     case "tabata":
       return {
@@ -227,22 +200,22 @@ function buildConfig(format: Format, capMinutes: number, intensity: Intensity): 
         rounds: 8,
         workSec: 20,
         restSec: 10,
-        movements: capMinutes <= 4 ? 1 : 2,
+        movements: blockMin <= 4 ? 1 : 2,
       };
     case "ygig":
       return {
         format: "ygig",
         capSec,
         partners: 2,
-        rounds: capMinutes <= 20 ? 5 : 8,
+        rounds: blockMin <= 15 ? 5 : 8,
       };
     case "interval": {
-      const rounds = Math.max(4, Math.round(capMinutes / 4));
+      const rounds = Math.max(4, Math.round(blockMin / 3));
       return {
         format: "interval",
         rounds,
-        workSec: 90,
-        restSec: 60,
+        workSec: 60,
+        restSec: 30,
       };
     }
     case "strength":
@@ -251,16 +224,6 @@ function buildConfig(format: Format, capMinutes: number, intensity: Intensity): 
         mainRestSec: restForIntensity(intensity),
         accessoryRestSec: 60,
       };
-    case "sc_couplet": {
-      const strengthMin = Math.max(10, Math.round(capMinutes * 0.45));
-      const conditioningMin = capMinutes - strengthMin;
-      return {
-        format: "sc_couplet",
-        capSec,
-        strengthMinutes: strengthMin,
-        conditioningMinutes: conditioningMin,
-      };
-    }
   }
 }
 
@@ -279,31 +242,26 @@ function restForIntensity(intensity: Intensity): number {
 
 function buildStructure(
   format: Format,
-  capMinutes: number,
-  config: WorkoutConfig,
-  movements: Movement[]
+  blockMin: number,
+  config: WorkoutConfig
 ): string {
   switch (format) {
     case "amrap":
-      return `AMRAP — ${capMinutes} min`;
+      return `AMRAP ${blockMin} min`;
     case "for_time":
-      return `${(config as { rounds: number }).rounds} Rounds For Time — ${capMinutes} min cap`;
+      return `${(config as { rounds: number }).rounds} Rounds For Time · ${blockMin} min cap`;
     case "chipper":
-      return `Chipper — One round, ${capMinutes} min cap`;
+      return `Chipper — one round, ${blockMin} min cap`;
     case "emom":
-      return `EMOM ${capMinutes} — ${(config as { stations: number }).stations} stations rotating`;
+      return `EMOM ${blockMin} — ${(config as { stations: number }).stations} stations`;
     case "tabata":
       return `Tabata — 8 × (20s on / 10s off)`;
     case "ygig":
-      return `You-Go-I-Go — ${(config as { rounds: number }).rounds} rounds, partner alternates`;
+      return `YGIG — ${(config as { rounds: number }).rounds} rounds, 2-person`;
     case "interval":
-      return `Intervals — ${(config as { rounds: number }).rounds} × (90s on / 60s off)`;
+      return `Intervals — ${(config as { rounds: number }).rounds} × (60s on / 30s off)`;
     case "strength":
-      return `Strength — main lift + accessories`;
-    case "sc_couplet": {
-      const c = config as { strengthMinutes: number; conditioningMinutes: number };
-      return `S&C — ${c.strengthMinutes} min strength, then ${c.conditioningMinutes} min conditioning`;
-    }
+      return `Strength`;
   }
 }
 
@@ -324,7 +282,7 @@ function adjustRepsForFormat(
   return v;
 }
 
-function buildTitle(_format: Format, _type: WorkoutType, rand: () => number) {
+function buildTitle(_type: WorkoutType, rand: () => number) {
   const adj = pick(
     [
       "Iron",
@@ -363,7 +321,219 @@ function buildTitle(_format: Format, _type: WorkoutType, rand: () => number) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Strength generator
+//  Block composition
+// ─────────────────────────────────────────────────────────────
+
+const BLOCK_LABELS = ["A", "B", "C", "D"];
+
+function blockCount(capMin: number): number {
+  if (capMin <= 15) return 2;
+  return 3;
+}
+
+function blockFormatPlan(
+  type: WorkoutType,
+  count: number,
+  capMin: number,
+  rand: () => number
+): Format[] {
+  if (type === "strength") {
+    // Block A = main lift, Block B = accessory superset, Block C = short
+    // conditioning finisher (if there's room).
+    const finisher = pick<Format>(["amrap", "interval", "emom"], rand);
+    return count >= 3 ? ["strength", "strength", finisher] : ["strength", "strength"];
+  }
+
+  if (type === "strength_conditioning") {
+    // A = main lift, B = conditioning AMRAP, C = interval/for-time finisher.
+    const third = pick<Format>(["interval", "for_time", "emom"], rand);
+    return count >= 3 ? ["strength", "amrap", third] : ["strength", "amrap"];
+  }
+
+  if (type === "hyrox") {
+    const pool: Format[] = ["interval", "for_time", "chipper"];
+    return shuffle(pool, rand).slice(0, count);
+  }
+
+  // CrossFit
+  if (capMin <= 6) return ["tabata"];
+  const pool: Format[] = ["amrap", "emom", "for_time", "interval"];
+  // Only use tabata as a finisher for short sessions.
+  if (capMin <= 12) pool.push("tabata");
+  return shuffle(pool, rand).slice(0, count);
+}
+
+type BlockRole = "main" | "accessory" | "generic" | "finisher";
+
+interface BuildBlockArgs {
+  label: string;
+  format: Format;
+  role: BlockRole;
+  filters: FilterState;
+  pool: Movement[];
+  fullPool: Movement[];
+  blockMin: number;
+  rand: () => number;
+}
+
+function buildStrengthMainBlock(args: BuildBlockArgs): GeneratedBlock {
+  const { filters, pool, fullPool, blockMin, rand, label } = args;
+  const mainLift =
+    pickMainLift(pool, rand) ?? pickMainLift(fullPool, rand);
+  const { scheme, sets, reps } = schemeForIntensity(filters.intensity);
+  const mainRest = restForIntensity(filters.intensity);
+
+  const segments: GeneratedSegment[] = [];
+  if (mainLift) {
+    segments.push({
+      movementId: mainLift.id,
+      movement: mainLift,
+      reps,
+      unit: mainLift.unit,
+      loadHint: mainLift.loadHint,
+      strengthSet: { sets, scheme, restSec: mainRest },
+    });
+  }
+
+  const config = buildConfig("strength", blockMin, filters.intensity);
+  const durationSec = blockMin * 60;
+  return {
+    id: `blk_${label}_${Math.floor(rand() * 1e6)}`,
+    label,
+    title: "Main Lift",
+    format: "strength",
+    config,
+    segments,
+    structure: mainLift
+      ? `${sets} × ${reps} @ ${scheme} · ${mainLift.name}`
+      : "Strength — main lift",
+    durationSec,
+    restAfterSec: 0,
+  };
+}
+
+function buildStrengthAccessoryBlock(args: BuildBlockArgs): GeneratedBlock {
+  const { filters, pool, fullPool, blockMin, rand, label } = args;
+  const count = blockMin >= 12 ? 4 : 3;
+  const workingPool = pool.length >= count ? pool : fullPool;
+  const picks = fillSlots(workingPool, count, filters.type, rand);
+
+  const accessoryRest = 60;
+  const segments: GeneratedSegment[] = picks.map((m) => {
+    const isReps = m.unit === "reps";
+    const accessoryReps = isReps ? 10 : repsFor(m, "aerobic", rand);
+    return {
+      movementId: m.id,
+      movement: m,
+      reps: accessoryReps,
+      unit: m.unit,
+      loadHint: m.loadHint,
+      strengthSet: { sets: 3, scheme: "12RM", restSec: accessoryRest },
+    };
+  });
+
+  return {
+    id: `blk_${label}_${Math.floor(rand() * 1e6)}`,
+    label,
+    title: "Accessory superset",
+    format: "strength",
+    config: buildConfig("strength", blockMin, filters.intensity),
+    segments,
+    structure: `3 × 8–12 · ${count} movements`,
+    durationSec: blockMin * 60,
+    restAfterSec: 0,
+  };
+}
+
+function buildConditioningBlock(args: BuildBlockArgs): GeneratedBlock {
+  const { format, filters, pool, fullPool, blockMin, rand, label, role } = args;
+  const slots = Math.max(3, Math.min(5, slotsForFormat(format, blockMin)));
+
+  let workingPool = pool;
+  if (workingPool.length < slots) workingPool = fullPool;
+
+  // For S&C conditioning blocks, force a cardio piece if available.
+  const forceCardio = role === "generic" || role === "finisher"
+    ? filters.type === "strength_conditioning" ||
+      filters.type === "hyrox" ||
+      (filters.type === "crossfit" && format !== "emom")
+    : false;
+
+  let movements: Movement[];
+  if (forceCardio) {
+    const cardio = workingPool.filter(isCardio);
+    const other = workingPool.filter((m) => !isCardio(m));
+    const cardioPick =
+      cardio.length > 0 ? fillSlots(cardio, 1, filters.type, rand) : [];
+    const others = fillSlots(other, Math.max(0, slots - cardioPick.length), filters.type, rand);
+    movements = [...cardioPick, ...others];
+    if (movements.length < slots) {
+      // Backfill from full pool.
+      const more = fillSlots(
+        workingPool.filter((m) => !movements.some((x) => x.id === m.id)),
+        slots - movements.length,
+        filters.type,
+        rand
+      );
+      movements = [...movements, ...more];
+    }
+  } else {
+    movements = fillSlots(workingPool, slots, filters.type, rand);
+  }
+
+  const config = buildConfig(format, blockMin, filters.intensity);
+  const segments: GeneratedSegment[] = movements.map((m) => {
+    const base = repsFor(m, filters.intensity, rand);
+    const reps = adjustRepsForFormat(base, format, m.unit);
+    return {
+      movementId: m.id,
+      movement: m,
+      reps,
+      unit: m.unit,
+      loadHint: m.loadHint,
+    };
+  });
+
+  return {
+    id: `blk_${label}_${Math.floor(rand() * 1e6)}`,
+    label,
+    title: titleForFormat(format, blockMin, config),
+    format,
+    config,
+    segments,
+    structure: buildStructure(format, blockMin, config),
+    durationSec: blockMin * 60,
+    restAfterSec: 0,
+  };
+}
+
+function titleForFormat(
+  format: Format,
+  blockMin: number,
+  config: WorkoutConfig
+): string {
+  switch (format) {
+    case "amrap":
+      return `AMRAP ${blockMin} min`;
+    case "for_time":
+      return `${(config as { rounds: number }).rounds} RFT · ${blockMin} min cap`;
+    case "chipper":
+      return `Chipper · ${blockMin} min`;
+    case "emom":
+      return `EMOM ${blockMin}`;
+    case "tabata":
+      return `Tabata`;
+    case "ygig":
+      return `YGIG · ${blockMin} min`;
+    case "interval":
+      return `${(config as { rounds: number }).rounds} Intervals`;
+    case "strength":
+      return "Strength";
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Strength helpers
 // ─────────────────────────────────────────────────────────────
 
 function schemeForIntensity(intensity: Intensity): {
@@ -386,7 +556,6 @@ function schemeForIntensity(intensity: Intensity): {
 function pickMainLift(pool: Movement[], rand: () => number): Movement | null {
   const main = pool.filter(isMainLift);
   if (main.length === 0) return null;
-  // Prefer barbell > kettlebell double-lifts > dumbbell > bodyweight.
   const priority = (m: Movement) => {
     if (m.equipment.includes("barbell")) return 0;
     if (m.equipment.includes("kettlebell")) return 1;
@@ -399,147 +568,6 @@ function pickMainLift(pool: Movement[], rand: () => number): Movement | null {
   return pick(top, rand);
 }
 
-function generateStrength(
-  filters: FilterState,
-  rand: () => number
-): GeneratedWorkout {
-  const pool = eligible(filters.equipment, filters.type, filters.intensity);
-  const mainLift = pickMainLift(pool, rand);
-  const { scheme, sets, reps } = schemeForIntensity(filters.intensity);
-  const mainRest = restForIntensity(filters.intensity);
-  const accessoryRest = 60;
-
-  const segments: GeneratedSegment[] = [];
-
-  if (mainLift) {
-    segments.push({
-      movementId: mainLift.id,
-      movement: mainLift,
-      reps,
-      unit: mainLift.unit,
-      loadHint: mainLift.loadHint,
-      strengthSet: { sets, scheme, restSec: mainRest },
-    });
-  }
-
-  // Accessories: 2–3 movements from the same pool, avoiding the main lift's
-  // pattern stacking. Higher-rep sets (8–12), 3 sets each.
-  const accessoryPool = pool.filter(
-    (m) => !mainLift || m.id !== mainLift.id,
-  );
-  const accessoryCount = filters.timeCapMinutes >= 45 ? 3 : 2;
-  const accessories = fillSlots(
-    accessoryPool,
-    accessoryCount,
-    filters.type,
-    rand,
-  );
-  for (const a of accessories) {
-    const accessoryReps = a.unit === "reps" ? 10 : repsFor(a, "aerobic", rand);
-    segments.push({
-      movementId: a.id,
-      movement: a,
-      reps: accessoryReps,
-      unit: a.unit,
-      loadHint: a.loadHint,
-      strengthSet: { sets: 3, scheme: "12RM", restSec: accessoryRest },
-    });
-  }
-
-  const config = buildConfig("strength", filters.timeCapMinutes, filters.intensity);
-  return {
-    id: `wk_${Date.now()}_${Math.floor(rand() * 1e6)}`,
-    title: buildTitle("strength", filters.type, rand),
-    format: "strength",
-    type: filters.type,
-    intensity: filters.intensity,
-    equipmentSets: filters.equipment,
-    timeCapMinutes: filters.timeCapMinutes,
-    config,
-    segments,
-    structure: mainLift
-      ? `Strength — ${sets} × ${reps} @ ${scheme} ${mainLift.name}`
-      : `Strength — accessories only`,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-//  S&C couplet generator
-// ─────────────────────────────────────────────────────────────
-//  A strength block (1 main lift) followed by a conditioning block that
-//  must include at least one cardio piece.
-
-function generateSCCouplet(
-  filters: FilterState,
-  rand: () => number
-): GeneratedWorkout {
-  const pool = eligible(filters.equipment, filters.type, filters.intensity);
-  const mainLift = pickMainLift(pool, rand);
-  const { scheme, sets, reps } = schemeForIntensity(filters.intensity);
-  const mainRest = restForIntensity(filters.intensity);
-
-  const segments: GeneratedSegment[] = [];
-
-  if (mainLift) {
-    segments.push({
-      movementId: mainLift.id,
-      movement: mainLift,
-      reps,
-      unit: mainLift.unit,
-      loadHint: mainLift.loadHint,
-      strengthSet: { sets, scheme, restSec: mainRest },
-    });
-  }
-
-  // Conditioning block: 2–3 movements. Force at least one cardio piece.
-  const conditioningPool = pool.filter(
-    (m) => !mainLift || m.id !== mainLift.id,
-  );
-  const cardioPool = conditioningPool.filter(isCardio);
-  const nonCardioPool = conditioningPool.filter((m) => !isCardio(m));
-
-  const cardioCount = cardioPool.length > 0 ? 1 : 0;
-  const otherCount = filters.timeCapMinutes >= 30 ? 2 : 1;
-
-  let cardioPick: Movement[] = [];
-  if (cardioCount > 0) cardioPick = fillSlots(cardioPool, 1, filters.type, rand);
-
-  const others = fillSlots(nonCardioPool, otherCount, filters.type, rand);
-
-  // Interleave cardio first, then alternates.
-  const conditioning = [...cardioPick, ...others];
-
-  for (const m of conditioning) {
-    const base = repsFor(m, filters.intensity, rand);
-    const adjusted = adjustRepsForFormat(base, "amrap", m.unit);
-    segments.push({
-      movementId: m.id,
-      movement: m,
-      reps: adjusted,
-      unit: m.unit,
-      loadHint: m.loadHint,
-    });
-  }
-
-  const config = buildConfig("sc_couplet", filters.timeCapMinutes, filters.intensity);
-  const c = config as Extract<WorkoutConfig, { format: "sc_couplet" }>;
-
-  return {
-    id: `wk_${Date.now()}_${Math.floor(rand() * 1e6)}`,
-    title: buildTitle("sc_couplet", filters.type, rand),
-    format: "sc_couplet",
-    type: filters.type,
-    intensity: filters.intensity,
-    equipmentSets: filters.equipment,
-    timeCapMinutes: filters.timeCapMinutes,
-    config,
-    segments,
-    structure: mainLift
-      ? `${c.strengthMinutes} min — ${sets} × ${reps} @ ${scheme} ${mainLift.name}, then ${c.conditioningMinutes} min AMRAP`
-      : `${c.strengthMinutes} min strength, then ${c.conditioningMinutes} min AMRAP`,
-  };
-}
-
 // ─────────────────────────────────────────────────────────────
 //  Public API
 // ─────────────────────────────────────────────────────────────
@@ -549,80 +577,132 @@ export function generateWorkout(
   seed?: number
 ): GeneratedWorkout {
   const rand = rng(seed);
+  const fullPool = eligible(filters.equipment, filters.type, filters.intensity);
 
-  if (filters.type === "strength") return generateStrength(filters, rand);
-  if (filters.type === "strength_conditioning") return generateSCCouplet(filters, rand);
+  const count = blockCount(filters.timeCapMinutes);
+  const totalRest = (count - 1) * REST_BETWEEN_BLOCKS_SEC;
+  const workSec = Math.max(
+    60 * 6,
+    filters.timeCapMinutes * 60 - totalRest
+  );
+  const perBlockSec = Math.floor(workSec / count);
+  const perBlockMin = Math.max(4, Math.round(perBlockSec / 60));
 
-  const pool = eligible(filters.equipment, filters.type, filters.intensity);
-  const format = chooseFormat(
-    filters.timeCapMinutes,
-    filters.intensity,
+  const formats = blockFormatPlan(
     filters.type,
+    count,
+    filters.timeCapMinutes,
     rand
   );
-  const slots = slotsForFormat(format, filters.timeCapMinutes);
-  const movements = fillSlots(pool, slots, filters.type, rand);
 
-  const config = buildConfig(format, filters.timeCapMinutes, filters.intensity);
+  const taken = new Set<string>();
+  const blocks: GeneratedBlock[] = [];
 
-  const segments: GeneratedSegment[] = movements.map((m) => {
-    const baseReps = repsFor(m, filters.intensity, rand);
-    const reps = adjustRepsForFormat(baseReps, format, m.unit);
-    return {
-      movementId: m.id,
-      movement: m,
-      reps,
-      unit: m.unit,
-      loadHint: m.loadHint,
+  for (let i = 0; i < count; i++) {
+    const format = formats[i] ?? formats[formats.length - 1];
+    const availablePool = fullPool.filter((m) => !taken.has(m.id));
+    const usingFallback = availablePool.length < 3;
+    const pool = usingFallback ? fullPool : availablePool;
+
+    let role: BlockRole = "generic";
+    if (filters.type === "strength") {
+      role = i === 0 ? "main" : i === 1 ? "accessory" : "finisher";
+    } else if (filters.type === "strength_conditioning") {
+      role = i === 0 ? "main" : i === count - 1 ? "finisher" : "generic";
+    } else if (i === count - 1) {
+      role = "finisher";
+    }
+
+    const args: BuildBlockArgs = {
+      label: BLOCK_LABELS[i],
+      format,
+      role,
+      filters,
+      pool,
+      fullPool,
+      blockMin: perBlockMin,
+      rand,
     };
-  });
+
+    let block: GeneratedBlock;
+    if (role === "main" && format === "strength") {
+      block = buildStrengthMainBlock(args);
+    } else if (role === "accessory" && format === "strength") {
+      block = buildStrengthAccessoryBlock(args);
+    } else {
+      block = buildConditioningBlock(args);
+    }
+
+    for (const s of block.segments) taken.add(s.movementId);
+
+    block.restAfterSec =
+      i < count - 1 ? REST_BETWEEN_BLOCKS_SEC : 0;
+    blocks.push(block);
+  }
 
   return {
     id: `wk_${Date.now()}_${Math.floor(rand() * 1e6)}`,
-    title: buildTitle(format, filters.type, rand),
-    format,
+    title: buildTitle(filters.type, rand),
     type: filters.type,
     intensity: filters.intensity,
     equipmentSets: filters.equipment,
     timeCapMinutes: filters.timeCapMinutes,
-    config,
-    segments,
-    structure: buildStructure(format, filters.timeCapMinutes, config, movements),
+    blocks,
   };
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Swap-by-stimulus
+//  Swap-by-stimulus — works across blocks
 // ─────────────────────────────────────────────────────────────
 
 export function swapMovement(
   currentId: string,
   workout: GeneratedWorkout,
   rand: () => number = Math.random
-): GeneratedSegment | null {
+): { blockId: string; segment: GeneratedSegment } | null {
   const current = MOVEMENT_BY_ID[currentId];
   if (!current) return null;
-  const taken = new Set(workout.segments.map((s) => s.movementId));
+
+  // Find which block + segment holds the current movement.
+  let blockId: string | null = null;
+  let existing: GeneratedSegment | null = null;
+  let currentBlockFormat: Format = "amrap";
+  for (const b of workout.blocks) {
+    const hit = b.segments.find((s) => s.movementId === currentId);
+    if (hit) {
+      blockId = b.id;
+      existing = hit;
+      currentBlockFormat = b.format;
+      break;
+    }
+  }
+  if (!blockId || !existing) return null;
+
+  const taken = new Set<string>();
+  for (const b of workout.blocks) for (const s of b.segments) taken.add(s.movementId);
+
   const pool = eligible(workout.equipmentSets, workout.type, workout.intensity)
     .filter((m) => m.id !== currentId && !taken.has(m.id))
     .map((m) => ({ m, score: stimulusOverlap(m, current) }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score);
   if (pool.length === 0) return null;
+
   const top = pool.slice(0, Math.min(4, pool.length));
   const replacement = top[Math.floor(rand() * top.length)].m;
 
-  // Preserve strength-set semantics on swap so the card keeps its shape.
-  const existing = workout.segments.find((s) => s.movementId === currentId);
-  if (existing?.strengthSet) {
+  if (existing.strengthSet) {
     const { sets, scheme, restSec } = existing.strengthSet;
     return {
-      movementId: replacement.id,
-      movement: replacement,
-      reps: existing.reps,
-      unit: replacement.unit,
-      loadHint: replacement.loadHint,
-      strengthSet: { sets, scheme, restSec },
+      blockId,
+      segment: {
+        movementId: replacement.id,
+        movement: replacement,
+        reps: existing.reps,
+        unit: replacement.unit,
+        loadHint: replacement.loadHint,
+        strengthSet: { sets, scheme, restSec },
+      },
     };
   }
 
@@ -633,13 +713,16 @@ export function swapMovement(
         (replacement.repsByIntensity[workout.intensity][1] -
           replacement.repsByIntensity[workout.intensity][0])
     );
-  const reps = adjustRepsForFormat(baseReps, workout.format, replacement.unit);
+  const reps = adjustRepsForFormat(baseReps, currentBlockFormat, replacement.unit);
   return {
-    movementId: replacement.id,
-    movement: replacement,
-    reps,
-    unit: replacement.unit,
-    loadHint: replacement.loadHint,
+    blockId,
+    segment: {
+      movementId: replacement.id,
+      movement: replacement,
+      reps,
+      unit: replacement.unit,
+      loadHint: replacement.loadHint,
+    },
   };
 }
 
@@ -656,36 +739,51 @@ function stimulusOverlap(a: Movement, b: Movement): number {
 //  Clipboard formatting
 // ─────────────────────────────────────────────────────────────
 
+function fmtRest(sec: number): string {
+  if (sec >= 60) {
+    const m = Math.floor(sec / 60);
+    const r = sec % 60;
+    return r === 0 ? `${m} min` : `${m}:${r.toString().padStart(2, "0")}`;
+  }
+  return `${sec}s`;
+}
+
 export function workoutToText(w: GeneratedWorkout): string {
   const lines: string[] = [];
   lines.push(`NEXUSFIT — ${w.title}`);
-  lines.push(w.structure);
+  lines.push(`Time cap: ${w.timeCapMinutes} min`);
   lines.push("");
-  for (const s of w.segments) {
-    if (s.strengthSet) {
-      const { sets, scheme, restSec } = s.strengthSet;
-      const restLabel =
-        restSec >= 60 ? `${Math.round(restSec / 60)} min` : `${restSec}s`;
+  for (let i = 0; i < w.blocks.length; i++) {
+    const b = w.blocks[i];
+    lines.push(`── Block ${b.label} · ${b.title} ──`);
+    lines.push(b.structure);
+    for (const s of b.segments) {
+      if (s.strengthSet) {
+        const { sets, scheme, restSec } = s.strengthSet;
+        lines.push(
+          `• ${sets} × ${s.reps} @ ${scheme}  ${s.movement.name}${
+            s.loadHint ? `  (${s.loadHint})` : ""
+          }  — rest ${fmtRest(restSec)}`
+        );
+        continue;
+      }
+      const repsLabel =
+        s.unit === "m"
+          ? `${s.reps} m`
+          : s.unit === "cal"
+            ? `${s.reps} cal`
+            : s.unit === "sec"
+              ? `${s.reps} s`
+              : `${s.reps}`;
       lines.push(
-        `• ${sets} × ${s.reps} @ ${scheme}  ${s.movement.name}${
-          s.loadHint ? `  (${s.loadHint})` : ""
-        }  — rest ${restLabel}`,
+        `• ${repsLabel}  ${s.movement.name}${s.loadHint ? `  (${s.loadHint})` : ""}`
       );
-      continue;
     }
-    const repsLabel =
-      s.unit === "m"
-        ? `${s.reps} m`
-        : s.unit === "cal"
-          ? `${s.reps} cal`
-          : s.unit === "sec"
-            ? `${s.reps} s`
-            : `${s.reps}`;
-    lines.push(
-      `• ${repsLabel}  ${s.movement.name}${s.loadHint ? `  (${s.loadHint})` : ""}`
-    );
+    if (b.restAfterSec > 0) {
+      lines.push("");
+      lines.push(`-- REST ${fmtRest(b.restAfterSec)} --`);
+      lines.push("");
+    }
   }
-  lines.push("");
-  lines.push(`Time Cap: ${w.timeCapMinutes} min`);
   return lines.join("\n");
 }
