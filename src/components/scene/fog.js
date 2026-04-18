@@ -1,14 +1,11 @@
-var register = require('../../core/component').registerComponent;
-var THREE = require('../../lib/three');
-var debug = require('../../utils/debug');
-
-var warn = debug('components:fog:warn');
+import { registerComponent as register } from '../../core/component.js';
+import * as THREE from 'three';
 
 /**
  * Fog component.
  * Applies only to the scene entity.
  */
-module.exports.Component = register('fog', {
+export var Component = register('fog', {
   schema: {
     color: {type: 'color', default: '#000'},
     density: {default: 0.00025},
@@ -17,20 +14,16 @@ module.exports.Component = register('fog', {
     type: {default: 'linear', oneOf: ['linear', 'exponential']}
   },
 
+  sceneOnly: true,
+
   update: function () {
     var data = this.data;
     var el = this.el;
     var fog = this.el.object3D.fog;
 
-    if (!el.isScene) {
-      warn('Fog component can only be applied to <a-scene>');
-      return;
-    }
-
     // (Re)create fog if fog doesn't exist or fog type changed.
     if (!fog || data.type !== fog.name) {
       el.object3D.fog = getFog(data);
-      el.systems.material.updateMaterials();
       return;
     }
 
@@ -46,10 +39,11 @@ module.exports.Component = register('fog', {
    * Remove fog on remove (callback).
    */
   remove: function () {
+    var el = this.el;
     var fog = this.el.object3D.fog;
     if (!fog) { return; }
-    fog.far = 0;
-    fog.near = 0.1;
+
+    el.object3D.fog = null;
   }
 });
 

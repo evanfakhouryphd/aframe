@@ -1,7 +1,7 @@
-var getMeshMixin = require('../getMeshMixin');
-var registerPrimitive = require('../primitives').registerPrimitive;
-var utils = require('../../../utils/');
-var meshPrimitives = require('./meshPrimitives');
+import getMeshMixin from '../getMeshMixin.js';
+import { registerPrimitive } from '../primitives.js';
+import * as utils from '../../../utils/index.js';
+import meshPrimitives from './meshPrimitives.js';
 
 registerPrimitive('a-sky', utils.extendDeep({}, getMeshMixin(), {
   defaultComponents: {
@@ -15,10 +15,10 @@ registerPrimitive('a-sky', utils.extendDeep({}, getMeshMixin(), {
       color: '#FFF',
       side: 'back',
       shader: 'flat',
-      npot: true
+      minFilter: 'linear'
     },
     scale: '-1 1 1'
   },
 
-  mappings: utils.extendDeep({}, meshPrimitives['a-sphere'].prototype.mappings)
+  mappings: utils.extendDeep({}, meshPrimitives['a-sphere'].mappings)
 }));

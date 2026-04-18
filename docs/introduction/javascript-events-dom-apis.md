@@ -14,7 +14,7 @@ examples:
   - title: A-Frame School &mdash; Handling Events
     src: https://glitch.com/edit/#!/aframe-school-js?path=solution4.html
   - title: Animated Lights
-    src: https://glitch.com/edit/#!/aframe-animated-lights?path=index.html
+    src: https://aframe.io/aframe/examples/showcase/dynamic-lights/
 ---
 
 [geometry]: ../components/geometry.md
@@ -321,7 +321,7 @@ entityEl.setAttribute('geometry', {
 });
 ```
 
-[physics]: https://github.com/donmccurdy/aframe-physics-system
+[physics]: https://github.com/c-frame/aframe-physics-system
 
 Or adding [the community physics component][physics]:
 
@@ -400,7 +400,7 @@ entityEl.object3D.position.x += 5;
 entityEl.object3D.position.multiplyScalar(5);
 
 // Examples for rotation.
-entityEl.object3D.rotation.y = THREE.Math.degToRad(45);
+entityEl.object3D.rotation.y = THREE.MathUtils.degToRad(45);
 entityEl.object3D.rotation.divideScalar(2);
 
 // Examples for scale.
@@ -500,6 +500,37 @@ function collisionHandler (event) {
 
 entityEl.addEventListener('physicscollided', collisionHandler);
 entityEl.removeEventListener('physicscollided', collisionHandler);
+```
+
+### Binding Event Listeners
+
+By default, [Javascript execution context rules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this) binds `this` to the global context (`window`) for any independent function, meaning that these functions won't have access to the component's `this` by default.
+
+In order for the component's `this` to be accessible inside an event listener, [it must be bound](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/this).
+
+There are several ways you can do this:
+
+1. By using an arrow function to define the event listener.  Arrow functions automatically bind `this`
+
+```
+this.el.addEventListener('physicscollided', (event) => {
+    console.log(this.el.id);
+});
+```
+
+
+2. By defining your event listener within the events object of the component (this will also handling adding and removing the listener automatically)
+
+   See the explanation [here](../core/component.md#events).
+
+
+3. By creating another function, which is the bound version of the function.
+
+```
+this.listeners = {
+    clickListener: this.clickListener.bind(this);
+}
+entityEl.addEventListener('click', this.listeners.clickListener);
 ```
 
 ## Caveats

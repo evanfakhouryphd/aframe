@@ -9,9 +9,10 @@ AFRAME.registerComponent('model-viewer', {
     var el = this.el;
 
     el.setAttribute('renderer', {colorManagement: true});
-    el.setAttribute('cursor', {rayOrigin: 'mouse', fuse: false});
-    el.setAttribute('webxr', {optionalFeatures: 'hit-test, local-floor'});
     el.setAttribute('raycaster', {objects: '.raycastable'});
+    el.setAttribute('cursor', {rayOrigin: 'mouse', fuse: false});
+    el.setAttribute('webxr', {optionalFeatures: 'hit-test, local-floor, light-estimation, anchors'});
+    el.setAttribute('background', '');
 
     this.onModelLoaded = this.onModelLoaded.bind(this);
 
@@ -134,6 +135,7 @@ AFRAME.registerComponent('model-viewer', {
 
   update: function () {
     if (!this.data.gltfModel) { return; }
+    this.el.setAttribute('ar-hit-test', { target: '#modelEl', type: 'map' });
     this.modelEl.setAttribute('gltf-model', this.data.gltfModel);
   },
 
@@ -162,7 +164,7 @@ AFRAME.registerComponent('model-viewer', {
     rightHandEl.setAttribute('line', {color: '#118A7E'});
 
     leftHandEl.setAttribute('rotation', '0 90 0');
-    leftHandEl.setAttribute('laser-controls', {hand: 'right'});
+    leftHandEl.setAttribute('laser-controls', {hand: 'left'});
     leftHandEl.setAttribute('raycaster', {objects: '.raycastable'});
     leftHandEl.setAttribute('line', {color: '#118A7E'});
 
@@ -201,27 +203,19 @@ AFRAME.registerComponent('model-viewer', {
     var arShadowEl = this.arShadowEl = document.createElement('a-entity');
     // The title / legend displayed above the model.
     var titleEl = this.titleEl = document.createElement('a-entity');
-    // Reticle model used to position the model in AR mode.
-    var reticleEl = this.reticleEl = document.createElement('a-entity');
-    // Scene ligthing.
+    // Scene lighting.
     var lightEl = this.lightEl = document.createElement('a-entity');
     var sceneLightEl = this.sceneLightEl = document.createElement('a-entity');
 
     sceneLightEl.setAttribute('light', {
       type: 'hemisphere',
-      intensity: 1
+      intensity: 3.14
     });
+    sceneLightEl.setAttribute('hide-on-enter-ar', '');
 
     modelPivotEl.id = 'modelPivot';
 
     this.el.appendChild(sceneLightEl);
-
-    reticleEl.setAttribute('gltf-model', '#reticle');
-    reticleEl.setAttribute('scale', '0.8 0.8 0.8');
-    reticleEl.setAttribute('ar-hit-test', {targetEl: '#modelPivot'});
-    reticleEl.setAttribute('visible', 'false');
-
-    modelEl.id = 'model';
 
     laserHitPanelEl.id = 'laserHitPanel';
     laserHitPanelEl.setAttribute('position', '0 0 -10');
@@ -235,6 +229,7 @@ AFRAME.registerComponent('model-viewer', {
     modelEl.setAttribute('rotation', '0 -30 0');
     modelEl.setAttribute('animation-mixer', '');
     modelEl.setAttribute('shadow', 'cast: true; receive: false');
+    modelEl.setAttribute('id', 'modelEl');
 
     modelPivotEl.appendChild(modelEl);
 
@@ -247,9 +242,17 @@ AFRAME.registerComponent('model-viewer', {
 
     arShadowEl.setAttribute('rotation', '-90 0 0');
     arShadowEl.setAttribute('geometry', 'primitive: plane; width: 30.0; height: 30.0');
-    arShadowEl.setAttribute('shadow', 'recieve: true');
+    arShadowEl.setAttribute('shadow', 'receive: true');
     arShadowEl.setAttribute('ar-shadows', 'opacity: 0.2');
     arShadowEl.setAttribute('visible', 'false');
+
+    this.el.addEventListener('ar-hit-test-select-start', function () {
+      arShadowEl.object3D.visible = false;
+    });
+
+    this.el.addEventListener('ar-hit-test-select', function () {
+      arShadowEl.object3D.visible = true;
+    });
 
     modelPivotEl.appendChild(arShadowEl);
 
@@ -271,7 +274,7 @@ AFRAME.registerComponent('model-viewer', {
       shadowCameraRight: 5,
       shadowCameraBottom: -5,
       shadowCameraTop: 5,
-      intensity: 0.5,
+      intensity: 1.57,
       target: 'modelPivot'
     });
 
@@ -279,7 +282,6 @@ AFRAME.registerComponent('model-viewer', {
     this.containerEl.appendChild(modelPivotEl);
 
     this.el.appendChild(containerEl);
-    this.el.appendChild(reticleEl);
   },
 
   onThumbstickMoved: function (evt) {

@@ -1,6 +1,5 @@
-var registerSystem = require('../core/system').registerSystem;
-var bind = require('../utils/bind');
-var constants = require('../constants/');
+import { registerSystem } from '../core/system.js';
+import * as constants from '../constants/index.js';
 
 var DEFAULT_LIGHT_ATTR = 'data-aframe-default-light';
 
@@ -10,10 +9,10 @@ var DEFAULT_LIGHT_ATTR = 'data-aframe-default-light';
  * Prescribes default lighting if not specified (one ambient, one directional).
  * Removes default lighting from the scene when a new light is added.
  *
- * @param {bool} defaultLights - Whether default lighting are defined.
- * @param {bool} userDefinedLights - Whether user lighting is defined.
+ * @param {boolean} defaultLights - Whether default lighting are defined.
+ * @param {boolean} userDefinedLights - Whether user lighting is defined.
  */
-module.exports.System = registerSystem('light', {
+export var System = registerSystem('light', {
   schema: {
     defaultLightsEnabled: {default: true}
   },
@@ -24,7 +23,7 @@ module.exports.System = registerSystem('light', {
     // Wait for all entities to fully load before checking for existence of lights.
     // Since entities wait for <a-assets> to load, any lights attaching to the scene
     // will do so asynchronously.
-    this.sceneEl.addEventListener('loaded', bind(this.setupDefaultLights, this));
+    this.sceneEl.addEventListener('loaded', this.setupDefaultLights.bind(this));
   },
 
   /**
@@ -53,7 +52,7 @@ module.exports.System = registerSystem('light', {
   },
 
   /**
-   * Prescibe default lights to the scene.
+   * Prescribe default lights to the scene.
    * Does so by injecting markup such that this state is not invisible.
    * These lights are removed if the user adds any lights.
    */
@@ -73,7 +72,7 @@ module.exports.System = registerSystem('light', {
     sceneEl.appendChild(ambientLight);
 
     directionalLight = document.createElement('a-entity');
-    directionalLight.setAttribute('light', {color: '#FFF', intensity: 0.6, castShadow: true});
+    directionalLight.setAttribute('light', {color: '#FFF', intensity: 1.884, castShadow: true});
     directionalLight.setAttribute('position', {x: -0.5, y: 1, z: 1});
     directionalLight.setAttribute(DEFAULT_LIGHT_ATTR, '');
     directionalLight.setAttribute(constants.AFRAME_INJECTED, '');

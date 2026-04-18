@@ -1,7 +1,7 @@
-var registerGeometry = require('../core/geometry').registerGeometry;
-var THREE = require('../lib/three');
+import * as THREE from 'three';
+import { registerGeometry } from '../core/geometry.js';
 
-var degToRad = THREE.Math.degToRad;
+var degToRad = THREE.MathUtils.degToRad;
 
 registerGeometry('cone', {
   schema: {
@@ -17,8 +17,8 @@ registerGeometry('cone', {
 
   init: function (data) {
     this.geometry = new THREE.CylinderGeometry(
-        data.radiusTop, data.radiusBottom, data.height, data.segmentsRadial,
-        data.segmentsHeight, data.openEnded, degToRad(data.thetaStart),
-        degToRad(data.thetaLength));
+      data.radiusTop, data.radiusBottom, data.height, data.segmentsRadial,
+      data.segmentsHeight, data.openEnded, degToRad(data.thetaStart),
+      degToRad(data.thetaLength));
   }
 });

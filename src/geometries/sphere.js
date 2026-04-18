@@ -1,7 +1,7 @@
-var registerGeometry = require('../core/geometry').registerGeometry;
-var THREE = require('../lib/three');
+import * as THREE from 'three';
+import { registerGeometry } from '../core/geometry.js';
 
-var degToRad = THREE.Math.degToRad;
+var degToRad = THREE.MathUtils.degToRad;
 
 registerGeometry('sphere', {
   schema: {

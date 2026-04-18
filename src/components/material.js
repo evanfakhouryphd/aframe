@@ -1,13 +1,9 @@
-/* global Promise */
-var utils = require('../utils/');
-var component = require('../core/component');
-var THREE = require('../lib/three');
-var shader = require('../core/shader');
+import * as THREE from 'three';
+import * as utils from '../utils/index.js';
+import { registerComponent } from '../core/component.js';
+import { shaders, shaderNames } from '../core/shader.js';
 
 var error = utils.debug('components:material:error');
-var registerComponent = component.registerComponent;
-var shaders = shader.shaders;
-var shaderNames = shader.shaderNames;
 
 /**
  * Material component.
@@ -16,23 +12,29 @@ var shaderNames = shader.shaderNames;
  *         three.js's implementation of PBR. Another standard shading model is `flat` which
  *         uses MeshBasicMaterial.
  */
-module.exports.Component = registerComponent('material', {
+export var Component = registerComponent('material', {
   schema: {
     alphaTest: {default: 0.0, min: 0.0, max: 1.0},
     depthTest: {default: true},
     depthWrite: {default: true},
     flatShading: {default: false},
-    npot: {default: false},
     offset: {type: 'vec2', default: {x: 0, y: 0}},
     opacity: {default: 1.0, min: 0.0, max: 1.0},
+    premultipliedAlpha: {default: false},
     repeat: {type: 'vec2', default: {x: 1, y: 1}},
+    magFilter: {default: 'linear', oneOf: ['nearest', 'linear']},
+    minFilter: {
+      default: 'linear-mipmap-linear',
+      oneOf: ['nearest', 'nearest-mipmap-nearest', 'nearest-mipmap-linear', 'linear', 'linear-mipmap-nearest', 'linear-mipmap-linear']
+    },
     shader: {default: 'standard', oneOf: shaderNames, schemaChange: true},
     side: {default: 'front', oneOf: ['front', 'back', 'double']},
     transparent: {default: false},
-    vertexColors: {type: 'string', default: 'none', oneOf: ['face', 'vertex']},
+    vertexColorsEnabled: {default: false},
     visible: {default: true},
     blending: {default: 'normal', oneOf: ['none', 'normal', 'additive', 'subtractive', 'multiply']},
-    dithering: {default: true}
+    dithering: {default: true},
+    anisotropy: {default: 0, min: 0}
   },
 
   init: function () {
@@ -135,9 +137,12 @@ module.exports.Component = registerComponent('material', {
     material.flatShading = data.flatShading;
     material.side = parseSide(data.side);
     material.transparent = data.transparent !== false || data.opacity < 1.0;
-    material.vertexColors = parseVertexColors(data.vertexColors);
+    material.vertexColors = data.vertexColorsEnabled;
     material.visible = data.visible;
     material.blending = parseBlending(data.blending);
+    // three.js r178+ requires premultipliedAlpha for MultiplyBlending,
+    // so force it on regardless of the user-supplied value.
+    material.premultipliedAlpha = data.blending === 'multiply' ? true : data.premultipliedAlpha;
     material.dithering = data.dithering;
 
     // Check if material needs update.
@@ -145,7 +150,7 @@ module.exports.Component = registerComponent('material', {
     if (oldDataHasKeys &&
         (oldData.alphaTest !== data.alphaTest ||
          oldData.side !== data.side ||
-         oldData.vertexColors !== data.vertexColors)) {
+         oldData.vertexColorsEnabled !== data.vertexColorsEnabled)) {
       material.needsUpdate = true;
     }
   },
@@ -166,9 +171,7 @@ module.exports.Component = registerComponent('material', {
    * (Re)create new material. Has side-effects of setting `this.material` and updating
    * material registration in scene.
    *
-   * @param {object} data - Material component data.
-   * @param {object} type - Material type to create.
-   * @returns {object} Material.
+   * @param {THREE.Material} material - Material to register.
    */
   setMaterial: function (material) {
     var el = this.el;
@@ -217,27 +220,9 @@ function parseSide (side) {
 }
 
 /**
- * Return a three.js constant determining vertex coloring.
- */
-function parseVertexColors (coloring) {
-  switch (coloring) {
-    case 'face': {
-      return THREE.FaceColors;
-    }
-    case 'vertex': {
-      return THREE.VertexColors;
-    }
-    default: {
-      return THREE.NoColors;
-    }
-  }
-}
-
-/**
  * Return a three.js constant determining blending
  *
- * @param {string} [blending=normal]
- * - `none`, additive`, `subtractive`,`multiply` or `normal`.
+ * @param {string} [blending=normal] - `none`, additive`, `subtractive`,`multiply` or `normal`.
  * @returns {number}
  */
 function parseBlending (blending) {
@@ -266,4 +251,13 @@ function parseBlending (blending) {
 function disposeMaterial (material, system) {
   material.dispose();
   system.unregisterMaterial(material);
+
+  // Dispose textures on this material
+  Object.keys(material)
+    .filter(function (propName) {
+      return material[propName] && material[propName].isTexture;
+    })
+    .forEach(function (mapName) {
+      material[mapName].dispose();
+    });
 }

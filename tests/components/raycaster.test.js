@@ -1,5 +1,5 @@
-/* global assert, process, setup, suite, test, THREE */
-var entityFactory = require('../helpers').entityFactory;
+/* global assert, setup, suite, test, THREE */
+import { entityFactory } from '../helpers.js';
 
 suite('raycaster', function () {
   var component;
@@ -118,6 +118,44 @@ suite('raycaster', function () {
       sceneEl.appendChild(el2);
       sceneEl.appendChild(el3);
     });
+  });
+
+  test('Objects not attached to scene are not whitelisted', function (done) {
+    var el2 = document.createElement('a-entity');
+    var el3 = document.createElement('a-entity');
+    el2.setAttribute('class', 'clickable');
+    el2.setAttribute('geometry', 'primitive: box');
+    el3.setAttribute('class', 'clickable');
+    el3.setAttribute('geometry', 'primitive: box');
+    el3.addEventListener('loaded', function () {
+      el3.object3D.parent = null;
+      el.setAttribute('raycaster', 'objects', '.clickable');
+      component.tock();
+      assert.equal(component.objects.length, 1);
+      assert.equal(component.objects[0], el2.object3D.children[0]);
+      assert.equal(el2, el2.object3D.children[0].el);
+      done();
+    });
+    sceneEl.appendChild(el2);
+    sceneEl.appendChild(el3);
+  });
+
+  test('Objects with parent not attached to scene are not whitelisted', function (done) {
+    var el2 = document.createElement('a-entity');
+    var el3 = document.createElement('a-entity');
+    el2.setAttribute('class', 'clickable');
+    el2.setAttribute('geometry', 'primitive: box');
+    el3.setAttribute('class', 'clickable');
+    el3.setAttribute('geometry', 'primitive: box');
+    el3.addEventListener('loaded', function () {
+      el2.object3D.parent = null;
+      el.setAttribute('raycaster', 'objects', '.clickable');
+      component.tock();
+      assert.equal(component.objects.length, 0);
+      done();
+    });
+    sceneEl.appendChild(el2);
+    el2.appendChild(el3);
   });
 
   suite('tock', function () {
@@ -310,7 +348,7 @@ suite('raycaster', function () {
           assert.notEqual(component.clearedIntersectedEls.indexOf(targetEl), -1);
           raycasterEl.removeEventListener('raycaster-intersection-cleared', cb);
           done();
-        });
+        }, {once: true});
         component.tock();
       });
       component.tock();
@@ -324,7 +362,7 @@ suite('raycaster', function () {
         targetEl.addEventListener('raycaster-intersected-cleared', function (evt) {
           assert.equal(evt.detail.el, raycasterEl);
           done();
-        });
+        }, {once: true});
         component.tock();
       });
       component.tock();
@@ -334,14 +372,14 @@ suite('raycaster', function () {
       targetEl.addEventListener('raycaster-intersected', function () {
         targetEl.addEventListener('raycaster-intersected-cleared', function () {
           done();
-        });
+        }, {once: true});
         assert.equal(component.intersectedEls.length, 2);
         assert.equal(component.clearedIntersectedEls.length, 0);
         el.setAttribute('raycaster', 'enabled', false);
         assert.equal(component.intersectedEls.length, 0);
         assert.equal(component.intersections.length, 0);
         assert.equal(component.clearedIntersectedEls.length, 2);
-      });
+      }, {once: true});
       component.tock();
     });
 
@@ -349,9 +387,50 @@ suite('raycaster', function () {
       targetEl.addEventListener('raycaster-intersected', function () {
         el.addEventListener('raycaster-intersection-cleared', function () {
           done();
-        });
+        }, {once: true});
         el.setAttribute('raycaster', 'enabled', false);
       });
+      component.tock();
+    });
+  });
+
+  suite('sprite raycasting', function () {
+    var spriteEl;
+
+    setup(function (done) {
+      spriteEl = document.createElement('a-entity');
+      el.setAttribute('position', '0 0 1');
+      el.setAttribute('raycaster', {near: 0.1, far: 10});
+
+      spriteEl.addEventListener('loaded', function () {
+        var material = new THREE.SpriteMaterial({color: 0x6699ff});
+        var sprite = new THREE.Sprite(material);
+        spriteEl.setObject3D('mesh', sprite);
+        spriteEl.object3D.position.set(0, 0, -1);
+        setTimeout(() => { done(); });
+      });
+      sceneEl.appendChild(spriteEl);
+    });
+
+    test('can intersect sprites', function (done) {
+      spriteEl.addEventListener('raycaster-intersected', function () {
+        done();
+      });
+      sceneEl.object3D.updateMatrixWorld();
+      component.refreshObjects();
+      component.tock();
+    });
+
+    test('emits intersection-cleared when looking away from sprite', function (done) {
+      spriteEl.addEventListener('raycaster-intersected', function () {
+        el.setAttribute('rotation', '90 0 0');
+        spriteEl.addEventListener('raycaster-intersected-cleared', function () {
+          done();
+        }, {once: true});
+        component.tock();
+      }, {once: true});
+      sceneEl.object3D.updateMatrixWorld();
+      component.refreshObjects();
       component.tock();
     });
   });

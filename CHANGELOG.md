@@ -1,3 +1,357 @@
+### 1.8.0 (unreleased)
+
+### Deprecations
+
+- If you used material `npot: true` previously as a way to set `texture.minFilter = THREE.LinearFilter` for better image quality, you need to replace it with `minFilter: linear`. That change was introduced in #5717 that removed `npot` property that was legacy of WebGL1, new material properties `minFilter` and `magFilter` have been exposed instead.
+
+### 1.7.1 (Apr 1, 2025)
+
+### Bug fixes
+
+- Add `package-lock.json` for consistency when generating builds (#5693) (@vincentfretin)
+- `hand-tracking-controls` components emits `controllermodelready` for consistency with other input controls components (#5685) (@coderofsalvation)
+- Fix inspector when post-processing is enabled (#5684) (@vincentfretin)
+- Fix Next.js skipping A-Frame CSS styles (#5682) (@vincentfretin)
+- Fix ar-hit-test component. Initialize on `enter-vr` event instead of `sessionstart` (#5680) (@vincentfretin)
+- Docs and examples improvements (@jgbarah, @vincentfretin, @diarmidmackenzie, @dmarcos)
+
+### 1.7.0 (Feb 20, 2025)
+
+[Post-processing](https://aframe.io/aframe/examples/showcase/post-processing/), [ES modules and importmap](https://aframe.io/aframe/examples/boilerplate/importmap/), [WebGPU and TSL support](https://aframe.io/aframe/examples/showcase/webgpu/), [Logitech MX Ink integration](https://aframe.io/aframe/examples/showcase/painter/) and more.
+
+
+### Major Changes
+
+- Update to THREE r173 (@dmarcos)
+- Import maps support and replacement of CommonJS with ES Modules (@mrxz, @vincentfretin)
+- Experimental post-processing support. It works both in regular and immersive modes (@enzofrancescaHM, @mrxz, @vincentfretin, @CodyJasonBennett)
+- Support for Logitech MX Ink tracked pen (@dmarcos)
+- Initial WebGPU support (@vincentfretin)
+
+
+### Bug fixes
+
+- Remove unused width and height properties from flat and standard shaders (#5647) (@mrxz)
+- Relax the `clientWidth` constraint in the controls tests. Fix tests on Ubuntu (#5641) (@vincentfretin)
+- Check if `XRSession` exists before attaching `inputsourcechange` listener (#5631) (@mrxz)
+- Don't apply anchor scale (only position and rotation) to an `anchored` entity (#5633) (@mrxz)
+- Wait until `referenceSpace` is available befor initializing compositor layers (#5626) (@vincentfretin)
+- Remove `raycaster-closest-entity-changed` listener when removing the `cursor` component (#5625) (@vincentfretin)
+- Handle `cursor` `rayOrigin` updates and `rayOrigin: mouse` when component attached to an entity and not `a-scene` (fix #4759) (#4760) (@kylebakerio)
+- Fix light shadow frustum visualization via CameraHelper (fix #5098) (#5099) (@IanSweeneyAC, @dmarcos)
+- Prevent loading cubemap for a probe light when `envMap` is not set (fix #5610) (#5611) (@mrxz)
+- Prevent redundant `pinchstarted` events on a hand tracking pinch gesture (#5609) (@mrxz)
+- Improve `cursor` component `xrselect` logic. Handle `rayOrigin` property changes and account for camera rigs when calculating the raycaster direction (#5606) (@mrxz, @vincentfretin)
+- Fix Apple Vision Pro detection logic to prevent false positives on iPad and iPhone (fix #5605) (#5607) (@vincentfretin)
+- Remove fullscreen CSS styles from the document element when `a-scene` is disconnected (#5602) (@gunhaxxor)
+- Adjust light intensity defaults and examples to account for `WebGLRenderer.useLegacyLights` deprecation in THREE r165 (#8813d3d2) (@dmarcos)
+- Fix model visibility logic of tracked hands and controllers when there are input switches (e.g hands to controllers) (#fa0cc748) (@dmarcos)
+- Prevent a-loader-title div (A-Frame created HTML element) to be serialized (#5574) (@vincentfretin)
+- Disable magic window mode in Vision Pro that is only suitable for handheld mobile devices (#5560) (@dmarcos)
+- Don't bubble `<a-asset-item>` error event that was preventing some tests to execute (#5548) (@mrxz)
+- Don't stringify properties with undefined values to prevent flushToDOM to produce properties with the `undefined` string (#5549) (@mrxz)
+- Fix serialization / stringification of asset type properties. When an HTML element they got exported incorrectly as e.g `[object HTMLImageElement]` (#5544) (@mrxz, @vincentfretin)
+- Refresh raycasted objects only when the `objects` raycaster component property changes. Prevent unnecessary costly updates (#5542) (@vincentfretin)
+- Fix issue when using `<a-cubemap>` as texture component envMap (@Omegahed, @mrxz)
+- Fix incorrect texture reference counting, potentially leading to exceptions upon disposal of the texture (#5529) (@mrxz)
+- Eliminate incorrect "unknown property" warnings from dynamic schema components (#5526) (@mrxz)
+
+### Enhancements
+
+- Bump to THREE to r173 (@dmarcos)
+- Post-processing experimental support (#5648) (@enzofrancescaHM, @CodyJasonBennett, @mrxz, @cabanier, @vincentfretin, @dmarcos)
+- ES Modules and importmap support (#5632, #5640) (@mrxz, @vincentfretin)
+- Support for WebGPURenderer and TSL (#5655) (@vincentfretin)
+- Logitech MX Ink integration (@dmarcos)
+- Update Draco decoder to 1.5.7 (#5523) (@vincentfretin)
+- Remove process/browser polyfill in tests (#5643) (@vincentfretin)
+- Improve build and test process (@vincentfretin)
+- `ar-hit-test` uses tracked controller if available instead of head orientation (fix #5315) (#5308) (@DougReeder)
+- Allows setting the distance within which the preview image of the link component is shown (#4425) (@DougReeder)
+- Animate position, rotation and scale on the THREE.Object3D directly without calling `setAttribute` (#4f711a4efab) (@dmarcos)
+- Update `shelljs` version (#5497) (@arpu)
+- Ability to enable/disable enterVR and exitVR shortcuts independently (#5512) (@mrxz)
+- Improve Pico headsets controller support on third-party browsers such as Wolvic (#5534) (@Elettrotecnica)
+- Consolidate `tracked-controls-webxr` logic into `tracked-controls`. Separation no longer needed since WebVR support deprecation (#627698d4) (@dmarcos)
+- Move WebXR controller detection to `inputsourceschange` event from a polling logic (#fd904348) (@dmarcos)
+- Update Webpack and related build dependencies (#5480) (@vincentfretin)
+- Add CodeQL scanning with one non-default query for scanning GitHub Actions (#5554) (@JarLob)
+- Add `AgX` and `neutral` to the list of tone mapping options in the renderer component (#5551) (@vincentfretin)
+- Docs improvements (@mrxz, @dmarcos, @Srile, @Control-C, @addy1997, @TomoyaKuroda, @vincentfretin, @jzhangdev, @Utopiah, @nikolas, @jadegamesuk, @diarmidmackenzie, @ogreenaway, @kewalkishang, @jinglechen2287)
+
+### Deprecations
+
+- Remove `physicallyCorrectLights` since `useLegacyLights` is no longer supported by `THREE.WebGLRenderer` since THREE r165 (#0123f53749) (@dmarcos)
+- Rename `oculus-touch-controls` to `meta-touch-controls` to reflect current branding. `oculus-touch-controls` kept around for backwards compatibility (#d3be3d2f) (@dmarcos)
+- Remove the now obsolete WebVR support in favor of WebXR (#5451) (@mrxz)
+- Deprecate `isGearVR` and `isOculusGo` functions (#5635) (@vincentfretin)
+
+### 1.6.0 (May 23, 2024)
+
+Tons of bug fixes. Memory management and performance improvements. API to control tick / tock execution order.
+
+### Bug fixes
+
+- Update wrist object position and rotation only when joint poses are available (#5438) (@mrxz)
+- Fix issue when checking schema properties when a schema changes (#5426) (@mrxz)
+- Set correct default value for `scene.background` when the background component is removed (#5417) (@mrxz)
+- Fix fog removal from scene (#5418) (@mrxz)
+- Fix Chrome non-passive violation warnings for touchmove and touchstart event handlers (#5511) (@mrxz, @mitchallen)
+- Fix bug when loading models on child entities of controllers (#5415) (@mrxz)
+- Fix bug in handling `processSound `callback when sound hadn't loaded yet (#5414) (@mrxz)
+- Fix misspelled variable names after using a spell checker (#5462) (@mrxz)
+- Fix problem when a shader that declares itself as glsl3 has its version ignored (bbe74f52) (@dmarcos)
+- Fix problem when checking for duplicate names of property types (#5475) (@mrxz)
+- Fix problem when adding children entities to a `hand-tracking-controls` entity before the hand model has loaded (12d550c6) (@dmarcos)
+- Hide `hand-tracking-controls` entity when there's no hand tracking available (dbdb9dac) (@dmarcos)
+- Fix issues when applying mixins to primitives (#5483) (@mrxz)
+- Fix issue when a component is not removed from the DOM via mixin removal / update (#5492) (@mrxz)
+- Fix timing issue when initializing XR Layers (#5489) (@zjm-meta)
+- Fix problem where scene doesn't wait / timeout on `a-asset-items` (#5491) (@mrxz)
+- Fix bug when using `setAttribute` on `a-scene` if a system has not yet initialized (#5482) (@mrxz)
+- Fix broken parser cache of `getComponentPropertyPath` (#5467) (@mrxz)
+- Fix issue when shadowMaps are always enabled. Make sure it's only enabled when there's a shadow component present (#5399) (@mrxz)
+- Fix issue when children of an entity with `hand-tracking-controls` don't follow the hand (874fced2) (@dmarcos)
+- Fix ES modules support on node (#5522) (@vincentfretin)
+- Make rotation axis order is consistent when using `setAttribute` and modifying object3D directly (#5513) (@mrxz)
+- Fix issue when calculating the size of the bounding box of an `obb-collider` (5da7166e) (@dmarcos)
+- Fix issue when the el.hasLoaded flag can be true but not all components have initialized (924dc00e) (@dmarcos)
+- Fix issue when trying to remove a mesh before model was loaded in `obj-mode`l component (#5499) (@Elettrotecnica)
+- Use `renderer.useLegacyLights` instead of the deprecated `renderer.physicallyCorrectLights` in THREE (#5389) (@vincentfretin)
+- Set correct default value for `glslVersion` for non-raw shaders (#5388) (@mrxz)
+- Remove "skinning: true" option when instanciating a THREE.MeshStandardMaterial object. Property deprecated in THREE (#5386) (@avdynut)
+- Fix issue when tracking an unexisting  AR Hitest anchor (@hi-liang, @dmarcos) (bcc4bc2cae2b3) (fix #5314)
+- Fix issue when layers are not initialized in AR mode (bb1e7a4e) (@dmarcos)
+- Fix issue when removing unexisting light probe after exiting vr mode (#5429) (fix #5384) (@Elettrotecnica)
+- Fix issue when removing an obb-collider (957237d) (fix #5385)
+- Fix typo when requesting layers on the WebXR requiredFeatures list (f7e56a8f) (@dmarcos)
+- Fix issue when trying to animate a non existing button on the controller (da8dc146) (@dmarcos)
+
+### Performance
+
+- Improve unit tests execution time (#5477) (@mrxz)
+- Recycle nextData and `previousOldData` objects when a component is destroyed preventing memory leaks (#5458) (@mrxz)
+- Improve pooling and recycling of internal component objects. Better memory management (#5459) (@mrxz)
+- Reduce memory allocations on component update logic (#5474) (@mrxz)
+- Improve throttleLeadingAndTrailing implementation to prevent unnecessary allocations (#5476) (@mrxz)
+
+### Enhancements
+
+- Introduce before/after component API to control tick / tock execution order (#5478) (@mrxz)
+- Bump to THREE r164 (@dmarcos)
+- Remove maximum canvas size (#5440) (@mrxz)
+- Cache THREE.Source instead of THREE.Textures (#5449) (@mrxz)
+- Introduce a sceneOnly flag for components that only apply to the `a-scene` element (#5465) (@mrxz)
+- Switch unit tests from WebVR to WebXR (#5452) (@mrxz)
+- Move back debug dependency from fork to upstream (#5508) (@arpu)
+- Introduce stencil property in the renderer system (#5509) (@mrxz)
+- Improve iPad detection logic to include iPad Pro (#5502) (@Drkjr92)
+- Remove unnecessary attribute properties and special handling of is: "attribute" in shader component (#5310) (@mrxz)
+- Improve async loading of aframe library and interoperation with ES module (#5481) (@mrxz)
+- Improve system warning messages when setting an unknown property (#5463) (@mrxz)
+- Use native bind method instead of custom implementation. Performance benefits of custom one no longer exist (#5461) (@mrxz)
+- Add Pico4 controllers support to `laser-controls` component (#5435) (@IamTonio)
+- Add hand model opacity to `hand-tracking-controls` (#5431) (@ehammons11)
+- Postpone screenshot component offscreen canvas setup until a screenshot is taken (#5442) (@arpu)
+- Update GitHub CI to use node 20.x (#5479) (@vincentfretin)
+- Use window.isSecureContext instead of manually checking URL for http/localhost/127.0.0.1 (#5487) (@mrxz)
+- Remove deprecated `getComputedAttribut` method (#5466) (@mrxz)
+- Remove unnecessary crossOrigin configuration for THREE loaders (#5416) (@mrxz)
+- Add support for `navigator.xr.offerSession` WebXR spec (#5410) (@cabanier)
+- Add support for fog, toneMapping, colorSpace conversion and logarithmicDepthBuffer to the msdf shader used in the text component (#5409) (@mrxz)
+- Remove minimum scale value. THREE handles zero scale gracefully (#5404) (@mrxz)
+- Add `hide-on-enter-vr` component analog to `hide-on-enter-ar` (9e644def) (@dmarcos)
+- Remove iOS 10 specific HLS workaround (#5450) (@mrxz)
+- Remove outdated polyfills that were needed just for IE11 (#5448) (@mrxz)
+- Docs improvements (@diarmidmackenzie, @Samu01Tech, @thepelkus-too, @Omegahed, stefanhuber, @ctrlw, @vincentfretin, @jgbarah, @AndreaMonzini)
+
+### 1.5.0 (Nov 14, 2023)
+
+Multiview extension, Spatial computing UIs, Mixed Reality features, Hand manipulation interactions, Quest 3 support and much more!
+
+### Bug fixes
+
+- Use renderer.useLegacyLights instead of the deprecated renderer.physicallyCorrectLights in three r150, but keep the physicallyCorrectLights property name for the renderer system for backward compatibility (fix #5293) (@mrx)
+- Fix `hand-controls` animations (#5300)
+- Fix outdated link in error message (#5313) (fix #5275) (@kolson25)
+- Fix visibility of controller in model-viewer example (#5317) (@DougReeder)
+- Fix typo in phong shader properties (#5334) (@nightgryphon)
+- Adapt shaders to new THREE API (#5328) (@nightgryphon)
+- Traverse meshes instead of using a hardcoded index (#5340) (@diarmidmackenzie)
+- Fix examples miscellaneous errors (#5343) (@mrxz)
+- Fix back plane resizing when text component changes (#5357) (fix #2764) (@brycethomas)
+- Fix switching back and forth from hands to controller input (fix #5373) (@floe, @dmarcos)
+
+### Enhancements
+
+- Update to THREE r158 (@felixtrz, @dmarcos) (fix #5369)
+- Add `hand-tracking-grab-controls` component to make any entity manipulable with hands (@dmarcos)
+- Add support for WebXR Mesh and Planes Module (real-world-meshing component) (@dmarcos)
+- Add support for WebXR Anchors Module (anchored component) (@dmarcos)
+- Add support OVR_multiview extension (@felixtrz)
+- Add support for Quest 3 controllers (@dmarcos, @felixtrz)
+- New `obb-collider` implementing oriented bounding box colliders (@dmarcos)
+- Improve hand-trackin-controls pinch logic (@dmarcos)
+- Add `anisotropy` option to material and renderer (#5309) (@mrxz)
+- Linter improvements (#5342) (@diarmidmackenzie)
+- Add `loopStart` and `loopEnd` properties to sound component to play loops (#5364) (@JonathannJacobs)
+- Improve sorting / rendering order (#5332) (@diarmidmackenzie, @mrxz)
+- Redesign enter immersive mode UI (@vincentfretin, @msub2, @diarmidmackenzie, @thedart76, @dmarcos)
+- Replace the use of `getJointPose` with `fillPoses` and `fillJointRadii` in hand-tracking-controls to avoid memory allocations (#5298) (@mrs)
+- Handle conversion from sRGB to Linear-sRGB implicitly instead of calling `applyColorCorrection` (#5210) (@mrxz, @vincentfretin)
+- Add Pico 4 headset controllers support (#5281) (@felixtrz)
+- Update URL to basis encoder (#5329) (@vincentfretin)
+- Add Spatial Computing UI example (#7ea40c13) (@dmarcos)
+- Remove workaround for an old Chrome bug in the context of `a-assets` (#5335) (@mrxz)
+- Unit tests improvements (@mrxz, @dmarcos)
+- Consolidate references to the CDN URL in a global variable (#5333) (@diarmidmackenzie)
+- Docs improvements (@luc122c, @donmccurdy, @turbotimon, @lainshiHenry, @Rhys-Alexander, @vincentfretin, @dmarcos)
+
+### Deprecations
+
+- `vr-mode-ui` component renamed to `xr-mode-ui` (@dmarcos)
+- GearVR and Daydream support (@vincentfretin, @dmarcos)
+
+
+### 1.4.2 (Apr 22, 2023)
+
+### Bug fixes
+
+- Fix issue when Quest 2 touch buttons are pressed before model has loaded (#5212, #5220) (@vincentfretin @mikemainguy)
+- Fix orientation of hand tracking models (fix #4848) (@DougReeder)
+- Fix problem with <a-assets> where image load quickly before the onload listener is attached. Manifests in particular for browser cached images (fix #5251) (@tomfelder94)
+- Fix loading order when A-Frame is used along defer and modules script tags (fix #5228) (@wmurphyrd)
+- Fix raycaster visual appearance when origin is not 0,0,0 (fix https://github.com/aframevr/aframe/issues/4882) (https://github.com/aframevr/aframe/pull/4884) (@Clicky02)
+- Fix problem when adding a single property component via mixin (#5273) (@kfarr @dmarcos)
+- Fix exception when trying to reference this pointer inside callback. (https://github.com/aframevr/aframe/pull/5221) (@diarmidmackenzie)
+Change vertexColors property name to vertexColorsEnabled and make it a boolean to match THREE API  (https://github.com/aframevr/aframe/pull/5250) (@diarmidmackenzie)
+
+### Enhancements
+
+- Add WebXR unit tests (https://github.com/aframevr/aframe/pull/5227) (@diarmidmackenzie)
+Expose low / high refresh rates options for WebXR devices (https://github.com/aframevr/aframe/pull/5217) (@diarmidmackenzie)
+- Docs improvements (@Srile @DougReeder @foobar404 @stefan-langenmaier @vincentfretin @diarmidmackenzie @dmarcos)
+
+
+### 1.4.1 (Jan 6, 2023)
+
+### Bug fixes
+
+- Fix error when exiting immersive mode (fix https://github.com/aframevr/aframe/issues/5137)(https://github.com/aframevr/aframe/pull/5198) (@vincentfretin)
+- Fix issue reentering immersive mode when using compositor layers (fix #5197) (https://github.com/supermedium/three.js/pull/9) (@vincentfretin)
+
+
+### 1.4.0 (Dec 26, 2022)
+
+A-Frame moved to custom elements V1, Oculus Quest Pro support, and tons of fixes and improvements in both A-Frame core and inspector 👏
+
+28 A-Framers contributed to this one! You're awesome 🙇
+
+[Sponsor](https://github.com/sponsors/dmarcos) A-Frame to help us move the 3D Web forward.
+
+You can also [buy a cool t-shirt](https://cottonbureau.com/p/SX82KC/shirt/a-frame-og#/9479538/tee-men-standard-tee-vintage-black-tri-blend-s) 👕
+
+### Major Changes
+
+- Move A-Frame to [Custom Elements V1](https://developer.mozilla.org/en-US/docs/Web/API/Window/customElements) API from the now deprecated [Custom Elements V0](https://chromestatus.com/feature/4642138092470272) (fix #4262) (#5136) (@dmarcos)
+- Move build system from Browserify to Webpack adding support for ESM (#5116) (@vincentfretin)
+- Update to THREE r147 (@dmarcos @AdaRoseCannon @vincentfretin)
+
+### Deprecations
+
+- Cardboard mode is now disabled by default as a first step towards deprecation. Magic window is now the fallback on mobile when native WebXR API is not available (fix #4814) (@dmarcos)
+
+### Enhancements
+
+- Add support for Meta Quest Touch Pro controllers (fix #5138) (#5139) (@felixtrz @cabanier @dmarcos)
+- Replace `targetRaySpace` with `gripSpace to position WebXR tracked controllers (#88e8db12) (@felixtrz @dmarcos)
+- Add support for KTX2 texture compression in [gltf-model component](https://aframe.io/docs/1.3.0/components/gltf-model.html#sidebar)  (#5101) (@jameskane05)
+- Add a default for Draco decoder URL for the [gltf model component](https://aframe.io/docs/1.3.0/components/gltf-model.html#sidebar) (#5156) (@kfarr)
+- Hide fullscreen button in desktop mode on iPad. Safari doesn't seem to support fullscreen mode. (fix #4841) (#5191)
+- Detach inactive pool entities from THREE Scene avoiding unnecessary matrix updates and raycaster checks / hits (#5188) (@diarmidmackenzie)
+- Add support for WebXR [foveation level](https://aframe.io/docs/1.3.0/components/renderer.html#foveationlevel). Only WebVR API was previously supported (fix #5108) (#5110) (@mrxz)
+- Events emitted on a cursor entity also pass original [MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent) and [TouchEvent](https://developer.mozilla.org/en-US/docs/Web/API/TouchEvent) events when applies.
+- Update unit test stack and fix test suite (#5091) (@vincentfretin)
+- Display fullscreen button when AR / VR mode are not available (#ce23027d) (@dmarcos)
+- Add `xrselect` option to [rayOrigin](https://aframe.io/docs/1.3.0/components/cursor.html#properties_rayorigin) property in cursor component so it can be used in a WebXR AR context (#5065) (@AdaRoseCannon)
+- `tracked-controls-webxr` reference space is now configurable (#5040) (@msub2)
+- New `light` component property to enable directional lights to track objects and update shadows automatically (#5025) (@AdaRoseCannon)
+- New `toneMapped` property on renderer system. Flat materials can now opt out of tone mapping to look like light emitting surfaces. (#5029) (@AdaRoseCannon)
+- Update hand tracking model (fix #5185) (@dmarcos @vincentfretin)
+- Factor out and document `throttleLeadingAndTrailing` (#5151) (@diarmidmackenzie)
+- Docs improvements (@nikolas @dirkk0 @JGrotex @Kershawj @juunini @andrejsmelnikovs @csxiaoyaojianxian @Kirshach @diarmidmackenzie @Chabloz @vincentfretin @karunstha @janarthnk @Utopiah @daniel-schroeder-dev @Descent098 @oroju1)
+
+### Bug fixes
+
+- Fix `triggerchanged` event not firing with Oculus Quest 2 controllers (#5149) (@msub2)
+- Fix issue of loading screen displayed indefinitely (#5033) (@diarmidmackenzie)
+- Remove duplicated update shader logic (#6858ed66) (@dmarcos)
+- Fix ray positioning for Oculus Quest 2 controllers (#5141) (@felixtrz)
+- Fix reflection component removal (#5125) (@vincentfretin)
+- Fix Quest 1 controller ray positioning (fix #5183) (#5190) (@vincentfretin)
+- Set default dev port to 8080. Oculus OS / Browser now block port 9000 and it's no longer usable (#0f508ad2) (@dmarcos)
+- Fix Oculus Quest 2 controller button animation and highlights (fix #5067) (#5103) (@kylebakerio)
+- Stop render loop when `a-scene` is removed from the DOM (#5112) (@vincentfretin)
+- Fix Github CI (#5092) (@vincentfretin)
+- Don't emit `granted` events if `DeviceOrientationEvent` permission is not granted (#5079) (@diarmidmackenzie)
+- Fix removal of components with the name pattern `component-name__sufix`. Used on [multiple instances of a single component](https://aframe.io/docs/1.3.0/core/component.html#multiple) (fix #5080) (#5081) (@diarmidmackenzie)
+- Exclude `a-mixins` when camera system tries to retrieve camera entities (fix #5023) (@mattrossman)
+- Reset `wasd-controls` velocity when axis properties change (#5050) (@vulture-boy)
+- Match [screenshot component](https://aframe.io/docs/1.3.0/components/screenshot.html) and scene encoding (#5157) (@diarmidmackenzie)
+- Fix VR/AR buttons positioning in embedded mode (fix #5158) (@dmarcos)
+- Remove examples warning messages (fix #5184) (@dmarcos @vincentfretin)
+
+
+### 1.3.0 (Feb 4, 2022)
+
+Huge pile of fixes!
+
+[Sponsor](https://github.com/sponsors/dmarcos) A-Frame to help us move the 3D Web forward.
+
+You can also [buy a cool t-shirt](https://cottonbureau.com/products/fragments#/6821945/tee-men-standard-tee-vintage-black-tri-blend-s) 👕
+
+### Major Changes
+
+- Update to THREE r137 (@dmarcos)
+
+### Fixes
+
+- Don't try to use [hit test](https://www.w3.org/TR/webxr-hit-test-1/) in VR. API only available in AR mode (#5005) (@AdaRoseCannon)
+- Fix canvas size calculation on embedded mode (fix #4911) (@s-light)
+- Fix reference space for [WebXR Layers](https://www.w3.org/TR/webxrlayers-1/) (#4991)
+- Fix problem when material map doesn't reflect the `offset` and `repeat` properties set via `setAttribute` (#4985) (@diarmidmackenzie @arturitu)
+- More robust `componentchanged` event. We were skipping the last component state transition event during a component change burst if last modification happens within throttle interval. (fix #4972) (@diarmidmackenzie @dmarcos)
+- Emit `mouseenter`, `mouseleave`, `click` cursor events component when order of intersected entities changes (fix #4978) (@diarmidmackenzie @dmarcos)
+- Prevent render loop to start before the camera is ready (#4967) (@wtodd1)
+- Fix mouse based [cursor](https://aframe.io/docs/1.2.0/components/cursor.html#sidebar) entity intersection when used with ortographic camera (#4935) (@kfarr)
+- Fix wrapping on distortion maps (#4932) (@AdaRoseCannon)
+- Remove checks to prompt the user to switch to mobile mode on mobile browsers disguised as desktop (e.g: iPad) Browsers now ship with DeviceOrientationEvent API enabled. (fix #4798) (@PlumCantaloupe @dmarcos)
+- Adds support for glTF models compressed with EXT_meshopt_compression (#4910) (@donmccurdy)
+- Add missing dependency to fix [360 image gallery example fade animation](https://aframe.io/docs/1.2.0/guides/building-a-360-image-gallery.html#event-set-component-for-visual-feedback-on-hover) (#4896) (@vincentmi)
+- Fix hand model to accommodate changes in the hand tracking API implementation (66e0c624) (@dmarcos)
+- Fix hit-test logic on [model-viewer example](https://aframe.io/aframe/examples/showcase/model-viewer/) (db633024) (@dmarcos)
+- Fix SDF text shader for WebGL1 devices (fix #4827) (@Dirk-27)
+- Replace SphericalReflectionMapping (now deprecated in THREE) with EquirectangularReflectionMapping (fix #4818) ( @diarmidmackenzie)
+- Automatic generation of environment map (#4797) (@AdaRoseCannon)
+- Fix copy in device orientation permission dialog (#4794) (@antoninklopp)
+
+### Enhancements
+
+- Add phong shader to [material component](https://aframe.io/docs/1.2.0/components/material.html#sidebar) (#5001) (@AdaRoseCannon)
+- Allow newer npm version in package.json (#4870) (@cwadrupldijjit)
+- Add support for [AR hit-test](https://www.w3.org/TR/webxr-hit-test-1/) for Augmented Reality headsets and handsets (#4892) (@AdaRoseCannon)
+- Add some default styling to [WebXR DOM-Overlay](https://aframe.io/docs/1.2.0/components/webxr.html#properties3_dom_overlay) (#4901) (@AdaRoseCannon)
+- Add some default styling to DOM-Overlay (#4901) (@AdaRoseCannon)
+- Integrate [WebXR background lighting estimation API](https://www.w3.org/TR/2021/WD-webxr-lighting-estimation-1-20210909/) and environment maps for AR scenes (#4890) (@AdaRoseCannon)
+- Use THREE.Cache API with a-assets.js (#4864) (@takahirox)
+- Add Reverb G2 Support (#4845) (@zach-capalbo)
+- Remove workaround to match Vive profile id with the one returned by Chrome. Chrome is now reporting the id matching the official WebXR profile (fix #4846) (@juliusikkala, @dmarcos)
+- Replace live-server by five-server (#4836) (@yandeu)
+- Add sRGB encoding to perspective screenshot (#4822) (@kfarr)
+- Add registerShader texture example (#4795) (@mordof)
+- Docs improvements (@epic-developer @jacob-willden @barthy-koeln @vincentfretin @RobinMglsk @a0m0rajab @kfarr @technobotanist @cao-jacky @schmelto @jlecordier @oneWaveAdrian @danbuckland @diarmidmackenzie @dmarcos)
+
+
 ### 1.2.0 (Feb 5, 2021)
 
 WebXR immersive session and hand tracking fixes.
@@ -85,7 +439,7 @@ AR, hand tracking, compositor layers, immersive navigation (Quest only), Quest 2
 * Make msdf shader WebGL 2 compliant @arpu
 * Valve Index controller support @zach-capalbo
 * Cordova compatibility @benallfree
-* Change [look-controls](https://aframe.io/docs/1.0.0/components/look-controls.html#sidebar) `hmdEnable` property name to `magicWindowTrackingEnabled` @dmarcos
+* Change [look-controls](https://aframe.io/docs/1.0.0/components/look-controls.html#sidebar) `hmdEnabled` property name to `magicWindowTrackingEnabled` @dmarcos
 * Improve hand tracking pinch gesture accuracy @cesmoak (#4691)
 * Improve error handling when entering immersive mode (#4660) @federico-camonapp @dmarcos
 * Make text of [device permission ui component](https://aframe.io/docs/1.0.0/components/device-orientation-permission-ui.html#sidebar) dialogs configurable @dmarcos

@@ -28,7 +28,9 @@ pages.forEach(function checkPage (pagePath) {
   let inlineLinkRegex = /\[.*?\]\((.*?)\)/g;
   match = inlineLinkRegex.exec(content);
   while (match !== null) {
-    checkLink(pagePath, match[1], 'Page does not exist');
+    if (!checkLink(pagePath, match[1])) {
+      addError(pagePath, match[0], 'Page does not exist');
+    }
     match = inlineLinkRegex.exec(content);
   }
 
@@ -51,7 +53,7 @@ pages.forEach(function checkPage (pagePath) {
   }
 
   // Unused defined links: `[page]: ../page.md -> [*][page]`
-  let referenceRegex = new RegExp(`\\[\(\.\*\)\?\\]: \.\*`, 'g');
+  let referenceRegex = new RegExp('\\[\(\.\*\)\?\\]: \.\*', 'g');
   match = referenceRegex.exec(content);
   while (match !== null) {
     referencingRegex = new RegExp(`\\[${match[1]}\\]`, 'g');

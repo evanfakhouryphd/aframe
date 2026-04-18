@@ -1,5 +1,5 @@
 /* global assert, suite, test, setup */
-var helpers = require('../../../helpers');
+import * as helpers from '../../../helpers.js';
 
 suite('a-obj-model', function () {
   setup(function (done) {
@@ -13,19 +13,21 @@ suite('a-obj-model', function () {
     });
   });
 
-  test('can set obj-model.mtl', function () {
+  test('can set obj-model.mtl', function (done) {
     var el = this.objModelEl;
-    el.setAttribute('mtl', 'mymtl.mtl');
-    process.nextTick(function () {
-      assert.equal(el.getAttribute('obj-model').mtl, 'url(mymtl.mtl)');
+    el.setAttribute('obj-model', 'mtl', 'mymtl.mtl');
+    setTimeout(function () {
+      assert.equal(el.getAttribute('obj-model').mtl, 'mymtl.mtl');
+      done();
     });
   });
 
-  test('can set obj-model.obj', function () {
+  test('can set obj-model.obj', function (done) {
     var el = this.objModelEl;
-    el.setAttribute('obj', 'myobj.obj');
-    process.nextTick(function () {
-      assert.equal(el.getAttribute('obj-model').mtl, 'url(myobj.obj)');
+    el.setAttribute('obj-model', 'obj', 'myobj.obj');
+    setTimeout(function () {
+      assert.equal(el.getAttribute('obj-model').obj, 'myobj.obj');
+      done();
     });
   });
 });

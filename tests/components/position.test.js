@@ -1,10 +1,11 @@
-/* global assert, process, setup, suite, test */
-var entityFactory = require('../helpers').entityFactory;
+/* global assert, setup, suite, test */
+import { entityFactory } from '../helpers.js';
 
 suite('position', function () {
   setup(function (done) {
     var el = this.el = entityFactory();
     el.setAttribute('position', '');
+    if (el.hasLoaded) { done(); }
     el.addEventListener('loaded', function () {
       done();
     });

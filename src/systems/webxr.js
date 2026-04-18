@@ -1,12 +1,12 @@
-var registerSystem = require('../core/system').registerSystem;
+import { registerSystem } from '../core/system.js';
+import * as utils from '../utils/index.js';
 
-var utils = require('../utils/');
 var warn = utils.debug('systems:webxr:warn');
 
 /**
  * WebXR session initialization and XR module support.
  */
-module.exports.System = registerSystem('webxr', {
+export var System = registerSystem('webxr', {
   schema: {
     referenceSpaceType: {type: 'string', default: 'local-floor'},
     requiredFeatures: {type: 'array', default: ['local-floor']},
@@ -23,15 +23,22 @@ module.exports.System = registerSystem('webxr', {
     this.sessionReferenceSpaceType = data.referenceSpaceType;
 
     if (data.overlayElement) {
+      // Update WebXR to support light-estimation
+      data.overlayElement.classList.remove('a-dom-overlay');
+      if (!data.optionalFeatures.includes('dom-overlay')) {
+        data.optionalFeatures.push('dom-overlay');
+        this.el.setAttribute('webxr', data);
+      }
       this.warnIfFeatureNotRequested('dom-overlay');
       this.sessionConfiguration.domOverlay = {root: data.overlayElement};
+      data.overlayElement.classList.add('a-dom-overlay');
     }
   },
 
   wasFeatureRequested: function (feature) {
     // Features available by default for immersive sessions don't need to
     // be requested explicitly.
-    if (feature === 'viewer' || feature === 'local') return true;
+    if (feature === 'viewer' || feature === 'local') { return true; }
 
     if (this.sessionConfiguration.requiredFeatures.includes(feature) ||
         this.sessionConfiguration.optionalFeatures.includes(feature)) {

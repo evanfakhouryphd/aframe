@@ -1,6 +1,6 @@
-var getMeshMixin = require('../getMeshMixin');
-var registerPrimitive = require('../primitives').registerPrimitive;
-var utils = require('../../../utils/');
+import getMeshMixin from '../getMeshMixin.js';
+import { registerPrimitive } from '../primitives.js';
+import * as utils from '../../../utils/index.js';
 
 registerPrimitive('a-videosphere', utils.extendDeep({}, getMeshMixin(), {
   defaultComponents: {
@@ -14,7 +14,7 @@ registerPrimitive('a-videosphere', utils.extendDeep({}, getMeshMixin(), {
       color: '#FFF',
       shader: 'flat',
       side: 'back',
-      npot: true
+      minFilter: 'linear'
     },
     scale: '-1 1 1'
   },

@@ -19,30 +19,6 @@ as AWS, Heroku, or self-hosting. An important note is that these sites should
 be served with SSL/HTTPS due to a common security restriction of the browser's
 WebVR API. All the options below serve with SSL/HTTPS.
 
-### Glitch
-
-![Glitch](https://cloud.githubusercontent.com/assets/674727/25643449/b5ee2542-2f54-11e7-9d45-22f3aa0b208f.jpg)
-
-*"Glitch is the friendly community where you'll build the app of your dreams
-With working example apps to remix, a code editor to modify them, instant
-hosting and deployment - anybody can build a web app on Glitch, for free."*
-
-[Glitch](https://glitch.com) is the easiest and fastest way to create and
-publish a site from within the browser. Glitch lets us add code and files,
-upload assets, edit with other people, define our own URL name, and instantly
-deploy changes on every change. We don't even need to make an account nor
-login:
-
-1. Try going to the [A-Frame Starter Glitch](https://glitch.com/~aframe/).
-2. Hit **Remix your own** to copy the project.
-3. Click the *Project info and options* icon on the top-left to rename our
-application (e.g., `https://yoursitename.glitch.me`).
-4. Edit the HTML, add files, modify the project.
-5. Click **Show** to view the application (e.g., the starter glitch is hosted at `https://aframe.glitch.me`).
-6. Every change to the project will update the application instantly. This can
-be toggled off by signing in, clicking your user avatar, and toggling **Refresh
-App on Changes**.
-
 ### Neocities
 
 ![Neocities](https://cloud.githubusercontent.com/assets/674727/25643397/6db47790-2f54-11e7-9eb3-ac18a1513e9f.jpg)
@@ -121,10 +97,6 @@ model files.
 7. Click on **Raw**.
 8. Then we have our asset URL hosted on GitHub. Then the asset can be
 hosted and referenced via [JSDelivr CDN][jsdelivr].
-
-Below is a video of the workflow:
-
-<div style="position:relative;height:0;padding-bottom:56.25%"><iframe src="https://www.youtube.com/embed/_D_C_oSKp9Y?ecver=2" width="640" height="360" frameborder="0" style="position:absolute;width:100%;height:100%;left:0" allowfullscreen></iframe></div>
 
 Though ee can also host the model the same as we serve all of our other assets,
 and let the server and CDN handle it. If we want a special place to host them,

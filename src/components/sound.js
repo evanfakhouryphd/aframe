@@ -1,17 +1,19 @@
-var registerComponent = require('../core/component').registerComponent;
-var debug = require('../utils/debug');
-var THREE = require('../lib/three');
+import { registerComponent } from '../core/component.js';
+import { debug } from '../utils/index.js';
+import * as THREE from 'three';
 
 var warn = debug('components:sound:warn');
 
 /**
  * Sound component.
  */
-module.exports.Component = registerComponent('sound', {
+export var Component = registerComponent('sound', {
   schema: {
     autoplay: {default: false},
     distanceModel: {default: 'inverse', oneOf: ['linear', 'inverse', 'exponential']},
     loop: {default: false},
+    loopStart: {default: 0},
+    loopEnd: {default: 0},
     maxDistance: {default: 10000},
     on: {default: ''},
     poolSize: {default: 1},
@@ -58,6 +60,15 @@ module.exports.Component = registerComponent('sound', {
         sound.setRolloffFactor(data.rolloffFactor);
       }
       sound.setLoop(data.loop);
+      sound.setLoopStart(data.loopStart);
+
+      // With a loop start specified without a specified loop end, the end of the loop should be the end of the file
+      if (data.loopStart !== 0 && data.loopEnd === 0) {
+        sound.setLoopEnd(sound.buffer.duration);
+      } else {
+        sound.setLoopEnd(data.loopEnd);
+      }
+
       sound.setVolume(data.volume);
       sound.isPaused = false;
     }
@@ -80,7 +91,7 @@ module.exports.Component = registerComponent('sound', {
 
         // Remove this key from cache, otherwise we can't play it again
         THREE.Cache.remove(data.src);
-        if (self.data.autoplay || self.mustPlay) { self.playSound(); }
+        if (self.data.autoplay || self.mustPlay) { self.playSound(self.processSound); }
         self.el.emit('sound-loaded', self.evtDetail, false);
       });
     }
@@ -132,8 +143,6 @@ module.exports.Component = registerComponent('sound', {
 
   /**
    * Removes current sound object, creates new sound object, adds to entity.
-   *
-   * @returns {object} sound
    */
   setupSound: function () {
     var el = this.el;
@@ -208,6 +217,7 @@ module.exports.Component = registerComponent('sound', {
     if (!this.loaded) {
       warn('Sound not loaded yet. It will be played once it finished loading');
       this.mustPlay = true;
+      this.processSound = processSound;
       return;
     }
 
@@ -231,6 +241,7 @@ module.exports.Component = registerComponent('sound', {
     }
 
     this.mustPlay = false;
+    this.processSound = undefined;
   },
 
   /**

@@ -1,34 +1,27 @@
-var THREE = global.THREE = require('super-three');
+import * as SUPER_THREE from 'three';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { OBB } from 'three/addons/math/OBB.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { LightProbeGenerator } from 'three/addons/lights/LightProbeGenerator.js';
+import { DeviceOrientationControls } from '../../vendor/DeviceOrientationControls.js'; // THREE.DeviceOrientationControls
 
-// Allow cross-origin images to be loaded.
-
-// This should not be on `THREE.Loader` nor `THREE.ImageUtils`.
-// Must be on `THREE.TextureLoader`.
-if (THREE.TextureLoader) {
-  THREE.TextureLoader.prototype.crossOrigin = 'anonymous';
-}
-
-// This is for images loaded from the model loaders.
-if (THREE.ImageLoader) {
-  THREE.ImageLoader.prototype.crossOrigin = 'anonymous';
-}
-
-// In-memory caching for XHRs (for images, audio files, textures, etc.).
-if (THREE.Cache) {
-  THREE.Cache.enabled = true;
-}
+var THREE = globalThis.THREE = {...SUPER_THREE};
 
 // TODO: Eventually include these only if they are needed by a component.
-require('../../vendor/DeviceOrientationControls'); // THREE.DeviceOrientationControls
-require('super-three/examples/js/loaders/DRACOLoader');  // THREE.DRACOLoader
-require('super-three/examples/js/loaders/GLTFLoader');  // THREE.GLTFLoader
-require('super-three/examples/js/loaders/OBJLoader');  // THREE.OBJLoader
-require('super-three/examples/js/loaders/MTLLoader');  // THREE.MTLLoader
-require('super-three/examples/js/utils/BufferGeometryUtils');  // THREE.BufferGeometryUtils
+THREE.DRACOLoader = DRACOLoader;
+THREE.GLTFLoader = GLTFLoader;
+THREE.KTX2Loader = KTX2Loader;
+THREE.OBJLoader = OBJLoader;
+THREE.MTLLoader = MTLLoader;
+THREE.OBB = OBB;
+THREE.BufferGeometryUtils = BufferGeometryUtils;
+THREE.LightProbeGenerator = LightProbeGenerator;
+THREE.DeviceOrientationControls = DeviceOrientationControls;
 
-THREE.DRACOLoader.prototype.crossOrigin = 'anonymous';
-THREE.GLTFLoader.prototype.crossOrigin = 'anonymous';
-THREE.MTLLoader.prototype.crossOrigin = 'anonymous';
-THREE.OBJLoader.prototype.crossOrigin = 'anonymous';
+THREE.Cache.enabled = true;
 
-module.exports = THREE;
+export default THREE;

@@ -1,9 +1,6 @@
-/* global DeviceOrientationEvent, location  */
-var registerComponent = require('../../core/component').registerComponent;
-var utils = require('../../utils/');
-var bind = utils.bind;
-
-var constants = require('../../constants/');
+/* global DeviceOrientationEvent */
+import { registerComponent } from '../../core/component.js';
+import { AFRAME_INJECTED } from '../../constants/index.js';
 
 var MODAL_CLASS = 'a-modal';
 var DIALOG_CLASS = 'a-dialog';
@@ -18,14 +15,11 @@ var DIALOG_OK_BUTTON_CLASS = 'a-dialog-ok-button';
 /**
  * UI for enabling device motion permission
  */
-module.exports.Component = registerComponent('device-orientation-permission-ui', {
+export var Component = registerComponent('device-orientation-permission-ui', {
   schema: {
     enabled: {default: true},
     deviceMotionMessage: {
       default: 'This immersive website requires access to your device motion sensors.'
-    },
-    mobileDesktopMessage: {
-      default: 'Set your browser to request the mobile version of the site and reload the page to enjoy immersive mode.'
     },
     httpsMessage: {
       default: 'Access this site over HTTPS to enter VR mode and grant access to the device sensors.'
@@ -35,21 +29,15 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
     cancelButtonText: {default: 'Cancel'}
   },
 
+  sceneOnly: true,
+
   init: function () {
     var self = this;
 
     if (!this.data.enabled) { return; }
 
-    if (location.hostname !== 'localhost' &&
-        location.hostname !== '127.0.0.1' &&
-        location.protocol === 'http:') {
+    if (!window.isSecureContext) {
       this.showHTTPAlert();
-    }
-
-    // Show alert on iPad if Safari is on desktop mode.
-    if (utils.device.isMobileDeviceRequestingDesktopSite()) {
-      this.showMobileDesktopModeAlert();
-      return;
     }
 
     // Browser doesn't support or doesn't require permission to DeviceOrientationEvent API.
@@ -58,10 +46,13 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
       return;
     }
 
-    this.onDeviceMotionDialogAllowClicked = bind(this.onDeviceMotionDialogAllowClicked, this);
-    this.onDeviceMotionDialogDenyClicked = bind(this.onDeviceMotionDialogDenyClicked, this);
+    this.onDeviceMotionDialogAllowClicked = this.onDeviceMotionDialogAllowClicked.bind(this);
+    this.onDeviceMotionDialogDenyClicked = this.onDeviceMotionDialogDenyClicked.bind(this);
     // Show dialog only if permission has not yet been granted.
-    DeviceOrientationEvent.requestPermission().catch(function () {
+    DeviceOrientationEvent.requestPermission().then(function () {
+      self.el.emit('deviceorientationpermissiongranted');
+      self.permissionGranted = true;
+    }).catch(function () {
       self.devicePermissionDialogEl = createPermissionDialog(
         self.data.denyButtonText,
         self.data.allowButtonText,
@@ -69,9 +60,6 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
         self.onDeviceMotionDialogAllowClicked,
         self.onDeviceMotionDialogDenyClicked);
       self.el.appendChild(self.devicePermissionDialogEl);
-    }).then(function () {
-      self.el.emit('deviceorientationpermissiongranted');
-      self.permissionGranted = true;
     });
   },
 
@@ -82,15 +70,6 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
 
   onDeviceMotionDialogDenyClicked: function () {
     this.remove();
-  },
-
-  showMobileDesktopModeAlert: function () {
-    var self = this;
-    var safariIpadAlertEl = createAlertDialog(
-      self.data.cancelButtonText,
-      self.data.mobileDesktopMessage,
-      function () { self.el.removeChild(safariIpadAlertEl); });
-    this.el.appendChild(safariIpadAlertEl);
   },
 
   showHTTPAlert: function () {
@@ -123,6 +102,9 @@ module.exports.Component = registerComponent('device-orientation-permission-ui',
 /**
  * Create a modal dialog that request users permission to access the Device Motion API.
  *
+ * @param {string} denyText
+ * @param {string} allowText
+ * @param {string} dialogText
  * @param {function} onAllowClicked - click event handler
  * @param {function} onDenyClicked - click event handler
  *
@@ -140,13 +122,13 @@ function createPermissionDialog (
   // Buttons
   denyButton = document.createElement('button');
   denyButton.classList.add(DIALOG_BUTTON_CLASS, DIALOG_DENY_BUTTON_CLASS);
-  denyButton.setAttribute(constants.AFRAME_INJECTED, '');
+  denyButton.setAttribute(AFRAME_INJECTED, '');
   denyButton.innerHTML = denyText;
   buttonsContainer.appendChild(denyButton);
 
   acceptButton = document.createElement('button');
   acceptButton.classList.add(DIALOG_BUTTON_CLASS, DIALOG_ALLOW_BUTTON_CLASS);
-  acceptButton.setAttribute(constants.AFRAME_INJECTED, '');
+  acceptButton.setAttribute(AFRAME_INJECTED, '');
   acceptButton.innerHTML = allowText;
   buttonsContainer.appendChild(acceptButton);
 
@@ -174,7 +156,7 @@ function createAlertDialog (closeText, dialogText, onOkClicked) {
   // Buttons
   okButton = document.createElement('button');
   okButton.classList.add(DIALOG_BUTTON_CLASS, DIALOG_OK_BUTTON_CLASS);
-  okButton.setAttribute(constants.AFRAME_INJECTED, '');
+  okButton.setAttribute(AFRAME_INJECTED, '');
   okButton.innerHTML = closeText;
   buttonsContainer.appendChild(okButton);
 
@@ -195,11 +177,11 @@ function createDialog (text, buttonsContainerEl) {
 
   modalContainer = document.createElement('div');
   modalContainer.classList.add(MODAL_CLASS);
-  modalContainer.setAttribute(constants.AFRAME_INJECTED, '');
+  modalContainer.setAttribute(AFRAME_INJECTED, '');
 
   dialog = document.createElement('div');
   dialog.className = DIALOG_CLASS;
-  dialog.setAttribute(constants.AFRAME_INJECTED, '');
+  dialog.setAttribute(AFRAME_INJECTED, '');
   modalContainer.appendChild(dialog);
 
   dialogTextContainer = document.createElement('div');

@@ -35,11 +35,10 @@ own custom URL name.
 
 Below are a few other A-Frame Glitches for starters:
 
-- [aframe-aincraft](https://glitch.com/~aframe-aincraft) - Minecraft demo.
-- [aframe-gallery](https://glitch.com/~aframe-gallery) - 360&deg; image gallery.
-- [aframe-registry](https://glitch.com/~aframe-registry) - Showcase of various components.
+- [aincraft](https://github.com/aframevr/aframe/tree/master/examples/docs/aincraft) - Minecraft demo.
+- [360-gallery](https://github.com/aframevr/aframe/tree/master/examples/docs/360-gallery/) - 360&deg; image gallery.
+- [community-components](https://github.com/aframevr/aframe/tree/master/examples/docs/community-components) - Showcase of various community components.
 - [aframe-vaporwave](https://glitch.com/~aframe-vaporwave) - Retro-futuristic scene.
-- [networked-aframe](https://glitch.com/~networked-aframe) - Multiuser.
 
 ### Other Code Editors
 
@@ -55,35 +54,16 @@ editors. Both support remixing or forking:
 For the options below, we should develop projects using a local server so that
 files are properly served. Options of local servers include:
 
-- Running `npm i -g five-server@latest && five-server --port=8000` in a terminal
+- Run `npm i -g five-server@latest && five-server --port=8000` in a terminal
   in the same directory as your HTML file.
-- Downloading the [Mongoose](https://www.cesanta.com/products/binary) application
-  and opening it from the same directory as your HTML file.
-- Running `python -m SimpleHTTPServer` (or `python -m http.server` for Python 3)
-  in a terminal in the same directory as your HTML file.
+- Run `python3 -m http.server` in a terminal in the same directory as your
+  HTML file.
 
 Once we are running our server, we can open our project in the browser using
 the local URL and port which the server is running on (e.g.,
 `http://localhost:8000`). Try *not* to open the project using the `file://`
 protocol which does not provide a domain; absolute and relative URLs may not
 work.
-
-### Download the Boilerplate on GitHub
-
-[ghpages]: https://pages.github.com/
-
-The boilerplate contains:
-
-- A simple HTML file that links to the [current version of A-Frame](#builds-prod)
-- An optional local development server
-- An easy deployment workflow for [GitHub Pages][ghpages] to share with the world
-
-We can grab the boilerplate in one of two ways:
-
-<a class="btn btn-download" href="https://github.com/aframevr/aframe-boilerplate/">Fork on GitHub</a>
-<br>(Note this is marked as 'discontinued', the Aframe version packaged with this is 0.5)
-
-<a class="btn btn-download" href="https://github.com/aframevr/aframe-boilerplate/archive/master.zip" download="aframe-boilerplate.zip">Download .ZIP<span></span></a>
 
 ### Include the JS Build
 
@@ -92,14 +72,14 @@ CDN build:
 
 ```html
 <head>
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
 </head>
 ```
 
 If we want to serve it ourselves, we can download the JS build:
 
-<a id="builds-prod" class="btn btn-download" href="https://aframe.io/releases/1.2.0/aframe.min.js" download>Production Version <span>1.2.0</span></a> <em class="install-note">Minified</em>
-<a id="builds-dev" class="btn btn-download" href="https://aframe.io/releases/1.2.0/aframe.js" download>Development Version <span>1.2.0</span></a> <em class="install-note">Uncompressed with Source Maps</em>
+<a id="builds-prod" class="btn btn-download" href="https://aframe.io/releases/1.7.1/aframe.min.js" download>Production Version <span>1.7.1</span></a> <em class="install-note">Minified</em>
+<a id="builds-dev" class="btn btn-download" href="https://aframe.io/releases/1.7.1/aframe.js" download>Development Version <span>1.7.1</span></a> <em class="install-note">Uncompressed with Source Maps</em>
 
 ### Install from npm
 
@@ -109,11 +89,11 @@ We can also install A-Frame through npm:
 $ npm install aframe
 ```
 
-Then we can bundle A-Frame into our application. For example, with Browserify
-or Webpack:
+Then we can bundle A-Frame into our application. For example, with Webpack or
+Vite:
 
 ```js
-require('aframe');
+import AFRAME from 'aframe';
 ```
 
 [angle]: https://www.npmjs.com/package/angle
@@ -154,7 +134,6 @@ In your `index.html`, adjust as follows:
             https://ssl.gstatic.com 
             'unsafe-eval' 
             https://cdn.aframe.io         <-- required
-            https://dpdb.webvr.rocks      <-- required
             https://fonts.googleapis.com  <-- required
             https://cdn.jsdelivr.net      <-- your choice, see below
             ; 
@@ -172,7 +151,7 @@ In your `index.html`, adjust as follows:
         "
       />
   ...
-  <script src="https://cdn.jsdelivr.net/npm/aframe@1.2.0/dist/aframe-master.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.7.1/dist/aframe-master.min.js"></script>
   <script id='my-scene' type="text/html">
     ...your scene goes here...
   </script>

@@ -1,6 +1,6 @@
 /* global assert, setup, suite, test */
-var entityFactory = require('../helpers').entityFactory;
-var THREE = require('index').THREE;
+import { entityFactory } from '../helpers.js';
+import THREE from 'lib/three.js';
 
 suite('shadow component', function () {
   var component;
@@ -17,11 +17,11 @@ suite('shadow component', function () {
       });
       el.setAttribute('shadow', {});
       mesh = new THREE.Mesh(
-        new THREE.Sphere(2),
+        new THREE.SphereGeometry(2),
         new THREE.MeshBasicMaterial({color: 0xffff00})
       );
       meshWithMaterialArray = new THREE.Mesh(
-        new THREE.Sphere(2),
+        new THREE.SphereGeometry(2),
         [new THREE.MeshBasicMaterial({color: 0xffff00}),
           new THREE.MeshBasicMaterial({color: 0xffff00})]
       );

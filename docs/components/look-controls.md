@@ -29,13 +29,12 @@ component](camera.md).
 | Property         | Description                                                      | Default Value |
 |------------------|------------------------------------------------------------------|---------------|
 | enabled          | Whether look controls are enabled.                               | true          |
-| hmdEnabled       | Whether to use VR headset pose in VR mode.                       | true          |
 | reverseMouseDrag | Whether to reverse mouse drag.                                   | false         |
 | reverseTouchDrag | Whether to reverse touch drag.                                   | false         |
 | touchEnabled     | Whether to use touch controls in magic window mode.              | true          |
 | mouseEnabled     | Whether to use mouse to move the camera in 2D mode.              | true          |
 | pointerLockEnabled | Whether to hide the cursor using the [Pointer Lock API][pointer-lock-api]. | false |
-| magicWindowTrackingEnabled | Wheter gyroscope camera tracking is enabled on mobile devices. | true |
+| magicWindowTrackingEnabled | Whether gyroscope camera tracking is enabled on mobile devices. | true |
 
 ## Customizing look-controls
 
@@ -51,10 +50,6 @@ look-controls component code][look-controls]. This allows us to configure the
 controls how we want (e.g., limit the pitch on touch, reverse one axis). If we
 were to include every possible configuration into the core component, we would
 be left maintaining a wide array of flags.
-
-The component lives within a Browserify/Webpack context so you'll need to
-replace the `require` statements with A-Frame globals (e.g.,
-`AFRAME.registerComponent`, `window.THREE`), and get rid of the `module.exports`.
 
 ## Caveats
 

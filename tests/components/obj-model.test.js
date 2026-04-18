@@ -1,5 +1,5 @@
-/* global assert, process, setup, suite, test */
-var entityFactory = require('../helpers').entityFactory;
+/* global assert, setup, suite, test */
+import { entityFactory } from '../helpers.js';
 
 var MTL = '/base/tests/assets/crate/crate.mtl';
 var OBJ = '/base/tests/assets/crate/crate.obj';
@@ -15,7 +15,9 @@ suite('obj-model', function () {
     objAsset.setAttribute('src', OBJ);
     el = this.el = entityFactory({assets: [mtlAsset, objAsset]});
     if (el.hasLoaded) { done(); }
-    el.addEventListener('loaded', function () { done(); });
+    el.addEventListener('loaded', function () {
+      done();
+    });
   });
 
   test('can load .OBJ only', function (done) {

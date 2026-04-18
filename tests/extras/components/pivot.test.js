@@ -1,6 +1,6 @@
-/* global assert, process, setup, suite, test */
-var helpers = require('../../helpers');
-var THREE = require('lib/three');
+/* global assert, setup, suite, test */
+import * as helpers from '../../helpers.js';
+import THREE from 'lib/three.js';
 
 var positionVec3 = new THREE.Vector3();
 

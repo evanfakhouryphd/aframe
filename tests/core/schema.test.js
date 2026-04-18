@@ -1,12 +1,6 @@
 /* global assert, suite, test */
-var Schema = require('core/schema');
-var registerPropertyType = require('core/propertyTypes').registerPropertyType;
-
-var isSingleProperty = Schema.isSingleProperty;
-var parseProperties = Schema.parseProperties;
-var parseProperty = Schema.parseProperty;
-var processSchema = Schema.process;
-var stringifyProperty = Schema.stringifyProperty;
+import { isSingleProperty, parseProperties, parseProperty, process as processSchema, stringifyProperty } from 'core/schema.js';
+import { propertyTypes, registerPropertyType } from 'core/propertyTypes.js';
 
 suite('schema', function () {
   suite('isSingleProperty', function () {
@@ -160,6 +154,7 @@ suite('schema', function () {
     });
 
     test('sets default value if not defined', function () {
+      delete propertyTypes.faketype;
       registerPropertyType('faketype', 'FAKEDEFAULT');
       var definition = processSchema({type: 'faketype'});
       assert.equal(definition.default, 'FAKEDEFAULT');
@@ -181,6 +176,7 @@ suite('schema', function () {
 
   suite('processSchema', function () {
     test('processes all property definitions', function () {
+      delete propertyTypes.faketype;
       registerPropertyType('faketype', 'FAKEDEFAULT');
 
       var schema = processSchema({

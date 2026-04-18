@@ -9,17 +9,17 @@ var DASH_REGEX = /-([a-z])/g;
  * Deserialize style-like string into an object of properties.
  *
  * @param {string} value - HTML attribute value.
- * @param {object} obj - Reused object for object pooling.
+ * @param {object} [obj] - Reused object for object pooling.
  * @returns {object} Property data.
  */
-module.exports.parse = function (value, obj) {
+export function parse (value, obj) {
   var parsedData;
   if (typeof value !== 'string') { return value; }
   parsedData = styleParse(value, obj);
   // The style parser returns an object { "" : "test"} when fed a string
   if (parsedData['']) { return value; }
-  return transformKeysToCamelCase(parsedData);
-};
+  return parsedData;
+}
 
 /**
  * Serialize an object of properties into a style-like string.
@@ -27,41 +27,20 @@ module.exports.parse = function (value, obj) {
  * @param {object} data - Property data.
  * @returns {string}
  */
-module.exports.stringify = function (data) {
+export function stringify (data) {
   if (typeof data === 'string') { return data; }
   return styleStringify(data);
-};
+}
 
 /**
  * Converts string from hyphen to camelCase.
  *
  * @param {string} str - String to camelCase.
- * @return {string} CamelCased string.
+ * @returns {string} CamelCased string.
  */
-function toCamelCase (str) {
+export function toCamelCase (str) {
   return str.replace(DASH_REGEX, upperCase);
 }
-module.exports.toCamelCase = toCamelCase;
-
-/**
- * Converts object's keys from hyphens to camelCase (e.g., `max-value` to
- * `maxValue`).
- *
- * @param {object} obj - The object to camelCase keys.
- * @return {object} The object with keys camelCased.
- */
-function transformKeysToCamelCase (obj) {
-  var camelKey;
-  var key;
-  for (key in obj) {
-    camelKey = toCamelCase(key);
-    if (key === camelKey) { continue; }
-    obj[camelKey] = obj[key];
-    delete obj[key];
-  }
-  return obj;
-}
-module.exports.transformKeysToCamelCase = transformKeysToCamelCase;
 
 /**
  * Split a string into chunks matching `<key>: <value>`
@@ -104,7 +83,7 @@ var getKeyValueChunks = (function () {
  * Convert a style attribute string to an object.
  *
  * @param {object} str - Attribute string.
- * @param {object} obj - Object to reuse as a base, else a new one will be allocated.
+ * @param {object} [obj] - Object to reuse as a base, else a new one will be allocated.
  */
 function styleParse (str, obj) {
   var chunks;
@@ -124,7 +103,7 @@ function styleParse (str, obj) {
     pos = item.indexOf(':');
     key = item.substr(0, pos).trim();
     val = item.substr(pos + 1).trim();
-    obj[key] = val;
+    obj[toCamelCase(key)] = val;
   }
   return obj;
 }

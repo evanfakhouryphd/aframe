@@ -1,10 +1,12 @@
-var debug = require('../utils/debug');
-var registerComponent = require('../core/component').registerComponent;
-var THREE = require('../lib/three');
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { debug } from '../utils/index.js';
+import { registerComponent } from '../core/component.js';
 
 var warn = debug('components:obj-model:warn');
 
-module.exports.Component = registerComponent('obj-model', {
+export var Component = registerComponent('obj-model', {
   schema: {
     mtl: {type: 'model'},
     obj: {type: 'model'}
@@ -14,8 +16,8 @@ module.exports.Component = registerComponent('obj-model', {
     var self = this;
 
     this.model = null;
-    this.objLoader = new THREE.OBJLoader();
-    this.mtlLoader = new THREE.MTLLoader(this.objLoader.manager);
+    this.objLoader = new OBJLoader();
+    this.mtlLoader = new MTLLoader(this.objLoader.manager);
     // Allow cross-origin images to be loaded.
     this.mtlLoader.crossOrigin = '';
 
@@ -34,11 +36,11 @@ module.exports.Component = registerComponent('obj-model', {
   },
 
   remove: function () {
-    if (!this.model) { return; }
     this.resetMesh();
   },
 
   resetMesh: function () {
+    if (!this.model) { return; }
     this.el.removeObject3D('mesh');
   },
 
@@ -64,9 +66,7 @@ module.exports.Component = registerComponent('obj-model', {
           self.model.traverse(function (object) {
             if (object.isMesh) {
               var material = object.material;
-              if (material.color) rendererSystem.applyColorCorrection(material.color);
               if (material.map) rendererSystem.applyColorCorrection(material.map);
-              if (material.emissive) rendererSystem.applyColorCorrection(material.emissive);
               if (material.emissiveMap) rendererSystem.applyColorCorrection(material.emissiveMap);
             }
           });

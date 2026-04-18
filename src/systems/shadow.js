@@ -1,5 +1,5 @@
-var registerSystem = require('../core/system').registerSystem;
-var THREE = require('../lib/three');
+import * as THREE from 'three';
+import { registerSystem } from '../core/system.js';
 
 var SHADOW_MAP_TYPE_MAP = {
   basic: THREE.BasicShadowMap,
@@ -13,7 +13,7 @@ var SHADOW_MAP_TYPE_MAP = {
  * Enabled automatically when one or more shadow components are added to the scene, the system sets
  * options on the WebGLRenderer for configuring shadow appearance.
  */
-module.exports.System = registerSystem('shadow', {
+export var System = registerSystem('shadow', {
   schema: {
     enabled: {default: true},
     autoUpdate: {default: true},
@@ -26,16 +26,13 @@ module.exports.System = registerSystem('shadow', {
 
     this.shadowMapEnabled = false;
 
-    if (!sceneEl.renderer) { return; }  // For tests.
-
     sceneEl.renderer.shadowMap.type = SHADOW_MAP_TYPE_MAP[data.type];
     sceneEl.renderer.shadowMap.autoUpdate = data.autoUpdate;
-    this.setShadowMapEnabled(this.shadowMapEnabled);
   },
 
   update: function (prevData) {
     if (prevData.enabled !== this.data.enabled) {
-      this.setShadowMapEnabled(this.data.enabled);
+      this.setShadowMapEnabled(this.shadowMapEnabled);
     }
   },
 
@@ -44,10 +41,29 @@ module.exports.System = registerSystem('shadow', {
    * @param {boolean} enabled
    */
   setShadowMapEnabled: function (enabled) {
+    var sceneEl = this.sceneEl;
     var renderer = this.sceneEl.renderer;
-    this.shadowMapEnabled = this.data.enabled && enabled;
-    if (renderer) {
-      renderer.shadowMap.enabled = this.shadowMapEnabled;
+
+    this.shadowMapEnabled = enabled;
+    var newEnabledState = this.data.enabled && this.shadowMapEnabled;
+    if (renderer && newEnabledState !== renderer.shadowMap.enabled) {
+      renderer.shadowMap.enabled = newEnabledState;
+
+      // Materials must be updated for the change to take effect.
+      updateAllMaterials(sceneEl);
     }
   }
 });
+
+function updateAllMaterials (sceneEl) {
+  if (!sceneEl.hasLoaded) { return; }
+
+  sceneEl.object3D.traverse(function (node) {
+    if (node.material) {
+      var materials = Array.isArray(node.material) ? node.material : [node.material];
+      for (var i = 0; i < materials.length; i++) {
+        materials[i].needsUpdate = true;
+      }
+    }
+  });
+}

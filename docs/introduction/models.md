@@ -6,10 +6,10 @@ parent_section: introduction
 order: 10
 examples:
  - title: Modifying Material of Model
-   src: https://glitch.com/edit/#!/aframe-modify-model-material?path=index.html:1:0
+   src: https://aframe.io/aframe/examples/test/gltf-model/modify-materials.html
 ---
 
-[3loaders]: https://github.com/mrdoob/three.js/tree/dev/examples/js/loaders
+[3loaders]: https://github.com/mrdoob/three.js/tree/dev/examples/jsm/loaders
 [ecsfind]: ./entity-component-system.md#where-to-find-components
 [glTF]: ../components/gltf-model.md
 [OBJ]: ../components/obj-model.md
@@ -30,7 +30,7 @@ three.js loaders.
 
 ## Animating Models
 
-[mixer]: https://github.com/donmccurdy/aframe-extras/tree/master/src/loaders#animation
+[mixer]: https://github.com/c-frame/aframe-extras/tree/master/src/loaders#animation
 
 We can use [Don McCurdy's animation-mixer component][mixer] to play a model's
 built-in animations. Animations usually come in the model built via animation
@@ -57,13 +57,13 @@ Places to find 3D models include:
 
 Programs to create models include:
 
-- [Supercraft](https://supermedium.com/supercraft/) - Built **with** A-Frame to
-  model directly within VR with no modeling skill required and load with
-  [`aframe-supercraft-loader`](https://www.npmjs.com/package/aframe-supercraft-loader).
 - [Blender](https://www.blender.org/)
 - [MagicaVoxel](https://ephtracy.github.io/)
 - [Autodesk Maya](https://www.autodesk.com/products/maya/overview) or [Maya LT](https://www.autodesk.com/products/maya-lt/overview)
 - [Maxon Cinema4D](https://www.maxon.net/en-us/)
+- [Supercraft](https://supermedium.com/supercraft/) (DEPRECATED) - Built **with** A-Frame to
+  model directly within VR with no modeling skill required and load with
+  [`aframe-supercraft-loader`](https://www.npmjs.com/package/aframe-supercraft-loader).
 
 ## Hosting Models
 
@@ -72,7 +72,7 @@ Models](./hosting-and-publishing.md#hosting-models).
 
 ## Modifying Materials
 
-[modify]: https://glitch.com/edit/#!/aframe-modify-model-material?path=index.html:1:0
+[modify]: https://aframe.io/aframe/examples/test/gltf-model/modify-materials.html
 
 To modify the material of a model, we need to wait for the model to load, and
 then modify the three.js meshes created from the model. What happens is an
@@ -102,7 +102,7 @@ See this live example of [modifying material of a loaded model][modify].
   });
 </script>
 
-<a-scene background="color: #ECECEC">
+<a-scene>
   <a-assets>
     <a-asset-item id="cityModel" src="https://cdn.aframe.io/test-models/models/glTF-2.0/virtualcity/VC.gltf"></a-asset-item>
   </a-assets>
@@ -148,7 +148,7 @@ If this didn't work, you should check your MTL file and you might notice it is t
 
 ### My Model Isn't Animating
 
-[aframe-extras]: https://github.com/donmccurdy/aframe-extras
+[aframe-extras]: https://github.com/c-frame/aframe-extras
 
 The [animation-mixer component][mixer], part of [aframe-extras] by Don McCurdy,
 provides controls for playing animations in three.js (.json) and glTF (.gltf)

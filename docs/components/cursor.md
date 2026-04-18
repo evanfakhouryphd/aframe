@@ -87,9 +87,10 @@ AFRAME.registerComponent('cursor-listener', {
 | downEvents         | Array of additional events on the entity to *listen* to for triggering `mousedown` (e.g., `triggerdown` for vive-controls).                        | []                               |
 | fuse               | Whether cursor is fuse-based.                                                                                                                      | false on desktop, true on mobile |
 | fuseTimeout        | How long to wait (in milliseconds) before triggering a fuse-based click event.                                                                     | 1500                             |
+| hand               | Filter WebXR `selectstart`/`selectend` events by controller handedness (`left` or `right`). When set, the cursor only responds to WebXR events from the matching controller. Used by laser-controls to prevent one controller's trigger from affecting another controller's hovered entity. | ''                               |
 | mouseCursorStylesEnabled | Whether to show pointer cursor in `rayOrigin: mouse` mode when hovering over entity.                                                               | true                             |
-| rayOrigin          | Where the intersection ray is cast from (i.e.,entity or mouse). `rayOrigin: mouse` is extremely useful for VR development on a mouse and keyboard. | entity
-| upEvents           | Array of additional events on the entity to *listen* to for triggering `mouseup` (e.g., `trackpadup` for daydream-controls).                       | []                               |
+| rayOrigin          | Where the intersection ray is cast from (i.e. xrselect ,entity or mouse). `rayOrigin: mouse` is extremely useful for VR development on a mouse and keyboard. | entity
+| upEvents           | Array of additional events on the entity to *listen* to for triggering `mouseup`.                       | []                               |
 
 To further customize the cursor component, we configure the cursor's dependency
 component, [the raycaster component][raycaster].
@@ -105,7 +106,11 @@ component, [the raycaster component][raycaster].
 | mouseleave    | Emitted on both cursor and intersected entity (if any) when cursor no longer intersects with previously intersected entity. |
 | mouseup       | Emitted on both cursor and intersected entity (if any) on mouseup on the canvas element.                                    |
 
-### Intersection Data
+### Event Data
+
+Additional detail is included in the `detail` object on the event as follows:
+
+#### intersection
 
 Relevant events will contain in the event detail `intersection`, which will
 contain `{distance, point, face, faceIndex, indices, object}` about specific
@@ -116,6 +121,37 @@ this.el.addEventListener('click', function (evt) {
   console.log(evt.detail.intersection.point);
 });
 ```
+
+#### intersectedEl
+
+Events emitted on the cursor entity also include event detail `intersectedEl`, which provides a reference to the intersected entity.
+
+#### mouseEvent and touchEvent
+
+Where the trigger for a cursor event is a [MouseEvent](https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent) or [TouchEvent](https://developer.mozilla.org/en-US/docs/Web/API/TouchEvent), event detail `mouseEvent` or `touchEvent` provides a reference to that event.
+
+These events provide a wealth of additional detail about the event, as detailed in the APIs linked above.  Among other things, they can indicate:
+
+- which mouse button was used
+- information about the state of the mouse buttons (or multi-touch for touch events), and relevant keys shuch as Shift, Ctrl etc. at the time of the mouse or touch event.
+- the screen co-ordinates where the event occurred.
+
+This information can be used by applications to handle cursor events differently, depending on this information (e.g. different handling of left click & right click).
+
+For example:
+
+```
+this.el.addEventListener('click', function (evt) {
+  if (!evt.detail.mouseEvent || evt.detail.mouseEvent.button === 0) {
+    console.log("left button clicked (or touch event / no information)");
+
+  } else if (evt.detail.mouseEvent.button === 2) {
+    console.log("right button clicked");
+  }
+});
+```
+
+At most one of  `mouseEvent` or `touchEvent` will be present on a cursor event, and sometimes neither will.  Neither will be present on `mousenter`, `mouseleave` and `fusing` events, nor on a `click` event that has been triggered by a fuse timeout rather than a mouse click or touch event.
 
 ## States
 
@@ -155,8 +191,7 @@ into the scene. If the user stares at an entity long enough (i.e., the
 `fuseTimeout`), then the cursor will trigger a click.
 
 The advantage of fuse-based interactions for VR is that it does not require
-extra input devices other than the headset. The fuse-based cursor is primarily
-intended for Google Cardboard applications. The disadvantage of fuse-based
+extra input devices other than the headset. The disadvantage of fuse-based
 interactions is that it requires the user to turn their head a lot.
 
 ## Adding Visual Feedback
@@ -183,3 +218,16 @@ pick up event with the `begin` attribute:
 
 To play with an example of a cursor with visual feedback, check out the [Cursor
 with Visual Feedback example on CodePen][cursor-codepen].
+
+## XR Select Cursor
+
+When an XR `"selectstart"` event happens the raycaster picks an element based upon it's current location.
+This works for handheld AR, and headmounted VR and AR. This works well with the mouse `rayOrigin` too.
+
+```html
+<a-scene
+  cursor__mouse="rayOrigin: mouse"
+  cursor__xrselect="rayOrigin: xrselect"
+  raycaster="objects:#objects *;"
+>
+```

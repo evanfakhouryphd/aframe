@@ -1,5 +1,5 @@
-var debug = require('../../utils/debug');
-var registerComponent = require('../../core/component').registerComponent;
+import { debug } from '../../utils/index.js';
+import { registerComponent } from '../../core/component.js';
 
 var warn = debug('components:pool:warn');
 
@@ -11,13 +11,15 @@ var warn = debug('components:pool:warn');
  * @member {array} availableEls - Available entities in the pool.
  * @member {array} usedEls - Entities of the pool in use.
  */
-module.exports.Component = registerComponent('pool', {
+export var Component = registerComponent('pool', {
   schema: {
     container: {default: ''},
     mixin: {default: ''},
     size: {default: 0},
     dynamic: {default: false}
   },
+
+  sceneOnly: true,
 
   multiple: true,
 
@@ -63,6 +65,13 @@ module.exports.Component = registerComponent('pool', {
     el.pause();
     this.container.appendChild(el);
     this.availableEls.push(el);
+
+    var usedEls = this.usedEls;
+    el.addEventListener('loaded', function () {
+      if (usedEls.indexOf(el) !== -1) { return; }
+      el.object3DParent = el.object3D.parent;
+      el.object3D.parent.remove(el.object3D);
+    });
   },
 
   /**
@@ -94,6 +103,10 @@ module.exports.Component = registerComponent('pool', {
     }
     el = this.availableEls.shift();
     this.usedEls.push(el);
+    if (el.object3DParent) {
+      el.object3DParent.add(el.object3D);
+      this.updateRaycasters();
+    }
     el.object3D.visible = true;
     return el;
   },
@@ -109,8 +122,19 @@ module.exports.Component = registerComponent('pool', {
     }
     this.usedEls.splice(index, 1);
     this.availableEls.push(el);
+    el.object3DParent = el.object3D.parent;
+    el.object3D.parent.remove(el.object3D);
+    this.updateRaycasters();
     el.object3D.visible = false;
     el.pause();
     return el;
+  },
+
+  updateRaycasters: function () {
+    var raycasterEls = document.querySelectorAll('[raycaster]');
+
+    raycasterEls.forEach(function (el) {
+      el.components['raycaster'].setDirty();
+    });
   }
 });

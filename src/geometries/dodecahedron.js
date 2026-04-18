@@ -1,5 +1,5 @@
-var registerGeometry = require('../core/geometry').registerGeometry;
-var THREE = require('../lib/three');
+import * as THREE from 'three';
+import { registerGeometry } from '../core/geometry.js';
 
 registerGeometry('dodecahedron', {
   schema: {

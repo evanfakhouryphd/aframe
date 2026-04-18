@@ -1,8 +1,6 @@
 /* global assert, setup, suite, test */
-var THREE = require('lib/three');
-
-var inferResponseType = require('core/a-assets').inferResponseType;
-var getFileNameFromURL = require('core/a-assets').getFileNameFromURL;
+import THREE from 'lib/three.js';
+import { inferResponseType, getFileNameFromURL } from 'core/a-assets.js';
 
 var IMG_SRC = '/base/tests/assets/test.png';
 var XHR_SRC = '/base/tests/assets/dummy/dummy.txt';
@@ -22,7 +20,25 @@ suite('a-assets', function () {
       done();
     });
     document.body.appendChild(scene);
-    THREE.Cache.files = {};
+    THREE.Cache.clear();
+  });
+
+  test('loads even if one asset fails to load', function (done) {
+    var el = this.el;
+    var scene = this.scene;
+    var assetItem = document.createElement('a-asset-item');
+    assetItem.setAttribute('src', 'invalid-filename');
+    assetItem.addEventListener('error', function (evt) {
+      assert.ok(evt.detail.xhr !== undefined);
+      // Stop propagation of the event so it doesn't trigger
+      // mocha unhandled exception logic.
+      evt.stopPropagation();
+    });
+    scene.addEventListener('loaded', function () {
+      done();
+    });
+    el.appendChild(assetItem);
+    document.body.appendChild(scene);
   });
 
   test('throws error if not in a-scene', function () {
@@ -53,9 +69,6 @@ suite('a-assets', function () {
 
     // Load image.
     document.body.appendChild(scene);
-    process.nextTick(function () {
-      img.onload();
-    });
   });
 
   test('caches image in three.js', function (done) {
@@ -68,7 +81,35 @@ suite('a-assets', function () {
     assetsEl.appendChild(img);
 
     img.addEventListener('load', function () {
-      assert.equal(THREE.Cache.files[IMG_SRC], img);
+      assert.equal(THREE.Cache.get(`image:${IMG_SRC}`), img);
+      done();
+    });
+
+    document.body.appendChild(sceneEl);
+  });
+
+  test('caches image loaded asynchronously alongside media element', function (done) {
+    var assetsEl = this.el;
+    var sceneEl = this.scene;
+
+    // Use a cache-busted src so the browser has to actually fetch, making
+    // imgEl.complete false when the Promise executor runs and forcing the
+    // onload path to be exercised.
+    var src = IMG_SRC + '?async-load-test';
+    THREE.Cache.remove('image:' + src);
+
+    var img = document.createElement('img');
+    img.setAttribute('src', src);
+    assetsEl.appendChild(img);
+
+    // A sibling media element ensures the image onload callback is
+    // verified alongside a non-trivial asset list.
+    var audio = document.createElement('audio');
+    audio.setAttribute('src', '');
+    assetsEl.appendChild(audio);
+
+    sceneEl.addEventListener('loaded', function () {
+      assert.equal(THREE.Cache.get('image:' + src), img);
       done();
     });
 
@@ -105,16 +146,22 @@ suite('a-assets', function () {
     document.body.appendChild(scene);
   });
 
-  test('calls load when timing out', function (done) {
+  test.skip('calls load when timing out', function (done) {
+    // We can't really test a timeout now since we changed from
+    // Promise.all to Promise.allSettled in a-assets.js
+    // The cdnIsDown.png file that doesn't exist will just give an error
+    // but still loads the scene.
+    // We need a way to simulate a hanging request for this test...
     var el = this.el;
     var scene = this.scene;
     var img = document.createElement('img');
 
     el.setAttribute('timeout', 50);
-    img.setAttribute('src', '');
+    img.setAttribute('src', 'cdnIsDown.png');
     el.appendChild(img);
 
     el.addEventListener('timeout', function () {
+      // This timeout listener is now never executed.
       el.addEventListener('loaded', function () {
         assert.ok(el.hasLoaded);
         done();
@@ -229,6 +276,7 @@ suite('a-asset-item', function () {
   });
 
   test('emits progress event', function (done) {
+    THREE.Cache.remove(`file:${XHR_SRC}`);
     var assetItem = document.createElement('a-asset-item');
     assetItem.setAttribute('src', XHR_SRC);
     assetItem.addEventListener('progress', function (evt) {
@@ -246,16 +294,47 @@ suite('a-asset-item', function () {
     assetItem.setAttribute('src', 'doesntexist');
     assetItem.addEventListener('error', function (evt) {
       assert.ok(evt.detail.xhr !== undefined);
+      // ATTENTION! This evt.stopPropagation() is very important. Without it
+      // the test will pass but will silently reduces the number of
+      // tests run from 1121 to 559!
+      evt.stopPropagation();
       done();
     });
     this.assetsEl.appendChild(assetItem);
     document.body.appendChild(this.sceneEl);
   });
 
+  test('waits for valid assets to load, even when some assets are invalid', function (done) {
+    var scene = this.sceneEl;
+    var assetItem1 = document.createElement('a-asset-item');
+    assetItem1.setAttribute('src', 'doesntexist');
+    var assetItem2 = document.createElement('a-asset-item');
+    assetItem2.setAttribute('src', XHR_SRC);
+
+    // Remove cache data to not load from it.
+    THREE.Cache.remove(`file:${XHR_SRC}`);
+
+    assetItem1.addEventListener('error', function (evt) {
+      assert.ok(evt.detail.xhr !== undefined);
+      evt.stopPropagation();
+    });
+    // To pass the test, we must get the 'loaded' event on asset 2 first,
+    // and only then on the scene.
+    assetItem2.addEventListener('loaded', function () {
+      scene.addEventListener('loaded', function () {
+        done();
+      });
+    });
+
+    this.assetsEl.appendChild(assetItem1);
+    this.assetsEl.appendChild(assetItem2);
+    document.body.appendChild(this.sceneEl);
+  });
+
   test('loads as text without responseType attribute', function (done) {
     var assetItem = document.createElement('a-asset-item');
     // Remove cache data to not load from it.
-    THREE.Cache.remove(XHR_SRC);
+    THREE.Cache.remove(`file:${XHR_SRC}`);
     assetItem.setAttribute('src', XHR_SRC);
     assetItem.addEventListener('loaded', function (evt) {
       assert.ok(assetItem.data !== null);
@@ -268,7 +347,7 @@ suite('a-asset-item', function () {
 
   test('loads as arraybuffer', function (done) {
     var assetItem = document.createElement('a-asset-item');
-    THREE.Cache.remove(XHR_SRC);
+    THREE.Cache.remove(`file:${XHR_SRC}`);
     assetItem.setAttribute('src', XHR_SRC);
     assetItem.setAttribute('response-type', 'arraybuffer');
     assetItem.addEventListener('loaded', function (evt) {
@@ -293,7 +372,7 @@ suite('a-asset-item', function () {
   });
 
   test('reloads as text', function (done) {
-    THREE.Cache.remove(XHR_SRC);
+    THREE.Cache.remove(`file:${XHR_SRC}`);
     var assetItem = document.createElement('a-asset-item');
     assetItem.setAttribute('src', XHR_SRC);
     assetItem.addEventListener('loaded', function (evt) {
@@ -347,7 +426,7 @@ suite('a-asset-item', function () {
     });
 
     test('get file name from url with query parameters', function () {
-      var url = 'https://cdn.glitch.com/test.jpg?1531238960521&test=yeah';
+      var url = 'https://aframe.io/test.jpg?1531238960521&test=yeah';
       assert.equal(getFileNameFromURL(url), 'test.jpg');
     });
   });

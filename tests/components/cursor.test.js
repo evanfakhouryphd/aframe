@@ -1,6 +1,6 @@
-/* global assert, process, setup, suite, test, CustomEvent */
-var entityFactory = require('../helpers').entityFactory;
-var once = require('../helpers').once;
+/* global assert, setup, suite, test, CustomEvent, MouseEvent, TouchEvent */
+import { entityFactory, once } from '../helpers.js';
+const touchEventSupported = (typeof TouchEvent !== 'undefined');
 
 suite('cursor', function () {
   var cameraEl;
@@ -44,7 +44,7 @@ suite('cursor', function () {
       assert.ok(el.is('cursor-hovering'));
       assert.ok(intersectedEl.is('cursor-hovered'));
       el.removeAttribute('cursor');
-      process.nextTick(function () {
+      setTimeout(function () {
         assert.notOk(el.is('cursor-hovering'));
         assert.notOk(intersectedEl.is('cursor-hovered'));
         done();
@@ -59,7 +59,7 @@ suite('cursor', function () {
       });
       assert.ok(el.is('cursor-fusing'));
       el.removeAttribute('cursor');
-      process.nextTick(function () {
+      setTimeout(function () {
         assert.notOk(el.is('cursor-fusing'));
         done();
       });
@@ -67,7 +67,7 @@ suite('cursor', function () {
 
     test('removes intersection listener', function (done) {
       el.removeAttribute('cursor');
-      process.nextTick(function () {
+      setTimeout(function () {
         el.emit('raycaster-intersection', {
           intersections: [intersection],
           els: [intersectedEl]
@@ -219,7 +219,7 @@ suite('cursor', function () {
       });
     });
 
-    test('emits mousenter event on intersectedEl, ignoring el intersection', function (done) {
+    test('emits mouseenter event on intersectedEl, ignoring el intersection', function (done) {
       once(intersectedEl, 'mouseenter', function (evt) {
         assert.equal(evt.detail.cursorEl, el);
         done();
@@ -237,7 +237,7 @@ suite('cursor', function () {
       var nearerIntersectedEl = document.createElement('a-entity');
       var furtherIntersectedEl = document.createElement('a-entity');
 
-      this.sinon.stub(el.components.raycaster, 'getIntersection', function (el) {
+      this.sinon.replace(el.components.raycaster, 'getIntersection', function (el) {
         switch (el) {
           case intersectedEl: return intersection1;
           case nearerIntersectedEl: return intersection2;
@@ -262,7 +262,7 @@ suite('cursor', function () {
           els: [furtherIntersectedEl]
         });
 
-        process.nextTick(function () {
+        setTimeout(function () {
           assert.equal(el.components.cursor.intersectedEl, nearerIntersectedEl);
           done();
         });
@@ -279,7 +279,7 @@ suite('cursor', function () {
       once(prevIntersectedEl, 'mouseleave', function (evt) {
         done();
       });
-      this.sinon.stub(el.components.raycaster, 'getIntersection', function (el) {
+      this.sinon.replace(el.components.raycaster, 'getIntersection', function (el) {
         return el === intersectedEl ? intersection : prevIntersection;
       });
       el.emit('raycaster-intersection', {
@@ -405,7 +405,7 @@ suite('cursor', function () {
       event.clientY = 5;
       el.setAttribute('cursor', 'rayOrigin', 'mouse');
       el.sceneEl.canvas.dispatchEvent(event);
-      process.nextTick(function () {
+      setTimeout(function () {
         var raycaster = el.getAttribute('raycaster');
         assert.notEqual(raycaster.direction.x, 0);
         done();
@@ -417,7 +417,7 @@ suite('cursor', function () {
       event.touches = {item: function () { return {clientX: 5, clientY: 5}; }};
       el.setAttribute('cursor', 'rayOrigin', 'mouse');
       el.sceneEl.canvas.dispatchEvent(event);
-      process.nextTick(function () {
+      setTimeout(function () {
         var raycaster = el.getAttribute('raycaster');
         assert.notEqual(raycaster.direction.x, 0);
         done();
@@ -474,6 +474,83 @@ suite('cursor', function () {
       assert.isTrue(cursorEmitSpy.calledWith('mouseup'));
     });
   });
+
+  suite('cursor event detail contains original mouse & touch events', function () {
+    test('original mousedown event', function (done) {
+      component.intersection = intersection;
+      component.intersectedEl = intersectedEl;
+      const mouseDown = new MouseEvent('mousedown');
+      once(el, 'mousedown', function (e) {
+        assert.equal(e.detail.mouseEvent, mouseDown);
+        done();
+      });
+      component.onCursorDown(mouseDown);
+    });
+
+    test('original mouseup event', function (done) {
+      component.intersection = intersection;
+      component.intersectedEl = intersectedEl;
+      const mouseUp = new MouseEvent('mouseup');
+      once(el, 'mouseup', function (e) {
+        assert.equal(e.detail.mouseEvent, mouseUp);
+        done();
+      });
+      component.isCursorDown = true;
+      component.onCursorUp(mouseUp);
+    });
+
+    test('original mouseup event on click', function (done) {
+      component.intersection = intersection;
+      component.intersectedEl = intersectedEl;
+      component.cursorDownEl = intersectedEl;
+      const mouseUp = new MouseEvent('mouseup');
+      once(el, 'click', function (e) {
+        assert.equal(e.detail.mouseEvent, mouseUp);
+        done();
+      });
+      component.isCursorDown = true;
+      component.onCursorUp(mouseUp);
+    });
+
+    // Some browsers (e.g. Firefox) don't support TouchEvent as a constructor
+    if (touchEventSupported) {
+      test('original touchstart event', function (done) {
+        component.intersection = intersection;
+        component.intersectedEl = intersectedEl;
+        const touchStart = new TouchEvent('touchstart');
+        once(el, 'mousedown', function (e) {
+          assert.equal(e.detail.touchEvent, touchStart);
+          done();
+        });
+        component.onCursorDown(touchStart);
+      });
+
+      test('original touchend event', function (done) {
+        component.intersection = intersection;
+        component.intersectedEl = intersectedEl;
+        const touchEnd = new TouchEvent('touchend');
+        once(el, 'mouseup', function (e) {
+          assert.equal(e.detail.touchEvent, touchEnd);
+          done();
+        });
+        component.isCursorDown = true;
+        component.onCursorUp(touchEnd);
+      });
+
+      test('original touchend event on click', function (done) {
+        component.intersection = intersection;
+        component.intersectedEl = intersectedEl;
+        component.cursorDownEl = intersectedEl;
+        const touchEnd = new TouchEvent('touchend');
+        once(el, 'click', function (e) {
+          assert.equal(e.detail.touchEvent, touchEnd);
+          done();
+        });
+        component.isCursorDown = true;
+        component.onCursorUp(touchEnd);
+      });
+    }
+  });
 });
 
 suite('cursor + raycaster', function () {
@@ -487,5 +564,90 @@ suite('cursor + raycaster', function () {
       });
     });
     parentEl.innerHTML = '<a-entity cursor raycaster="objects: .clickable"></a-entity>';
+  });
+});
+
+suite('cursor WebXR handedness filtering', function () {
+  var component;
+  var el;
+  var intersectedEl;
+
+  setup(function (done) {
+    var cameraEl = entityFactory();
+    el = document.createElement('a-entity');
+    intersectedEl = document.createElement('a-entity');
+    cameraEl.setAttribute('camera', 'active: true');
+    el.setAttribute('cursor', 'hand: right');
+    el.addEventListener('componentinitialized', function (evt) {
+      if (evt.detail.name !== 'cursor') { return; }
+      component = el.components.cursor;
+      done();
+    });
+    cameraEl.appendChild(el);
+  });
+
+  suite('onCursorDown', function () {
+    test('ignores selectstart from non-matching hand', function () {
+      var twoWayEmitSpy = this.sinon.spy(component, 'twoWayEmit');
+      component.onCursorDown({
+        type: 'selectstart',
+        inputSource: {handedness: 'left'}
+      });
+      assert.isFalse(twoWayEmitSpy.called);
+      assert.isFalse(component.isCursorDown);
+    });
+
+    test('processes selectstart from matching hand', function () {
+      var twoWayEmitSpy = this.sinon.spy(component, 'twoWayEmit');
+      component.intersectedEl = intersectedEl;
+      component.onCursorDown({
+        type: 'selectstart',
+        inputSource: {handedness: 'right'}
+      });
+      assert.isTrue(twoWayEmitSpy.calledWith('mousedown'));
+      assert.isTrue(component.isCursorDown);
+    });
+
+    test('processes non-WebXR events regardless of hand setting', function () {
+      var twoWayEmitSpy = this.sinon.spy(component, 'twoWayEmit');
+      component.intersectedEl = intersectedEl;
+      component.onCursorDown({type: 'mousedown'});
+      assert.isTrue(twoWayEmitSpy.calledWith('mousedown'));
+      assert.isTrue(component.isCursorDown);
+    });
+  });
+
+  suite('onCursorUp', function () {
+    test('ignores selectend from non-matching hand', function () {
+      var twoWayEmitSpy = this.sinon.spy(component, 'twoWayEmit');
+      component.isCursorDown = true;
+      component.onCursorUp({
+        type: 'selectend',
+        inputSource: {handedness: 'left'}
+      });
+      assert.isFalse(twoWayEmitSpy.called);
+      assert.isTrue(component.isCursorDown);
+    });
+
+    test('processes selectend from matching hand', function () {
+      var twoWayEmitSpy = this.sinon.spy(component, 'twoWayEmit');
+      component.isCursorDown = true;
+      component.intersectedEl = intersectedEl;
+      component.onCursorUp({
+        type: 'selectend',
+        inputSource: {handedness: 'right'}
+      });
+      assert.isTrue(twoWayEmitSpy.calledWith('mouseup'));
+      assert.isFalse(component.isCursorDown);
+    });
+
+    test('processes non-WebXR events regardless of hand setting', function () {
+      var twoWayEmitSpy = this.sinon.spy(component, 'twoWayEmit');
+      component.isCursorDown = true;
+      component.intersectedEl = intersectedEl;
+      component.onCursorUp({type: 'mouseup'});
+      assert.isTrue(twoWayEmitSpy.calledWith('mouseup'));
+      assert.isFalse(component.isCursorDown);
+    });
   });
 });

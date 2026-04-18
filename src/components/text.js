@@ -1,13 +1,13 @@
-var createTextGeometry = require('three-bmfont-text');
-var loadBMFont = require('load-bmfont');
+import createTextGeometry from 'three-bmfont-text';
+import loadBMFont from 'load-bmfont';
 
-var registerComponent = require('../core/component').registerComponent;
-var coreShader = require('../core/shader');
-var THREE = require('../lib/three');
-var utils = require('../utils/');
+import { registerComponent } from '../core/component.js';
+import { shaders } from '../core/shader.js';
+import * as THREE from 'three';
+import * as utils from '../utils/index.js';
+import { AFRAME_CDN_ROOT } from '../constants/index.js';
 
 var error = utils.debug('components:text:error');
-var shaders = coreShader.shaders;
 var warn = utils.debug('components:text:warn');
 
 // 1 to match other A-Frame default widths.
@@ -16,8 +16,8 @@ var DEFAULT_WIDTH = 1;
 // @bryik set anisotropy to 16. Improves look of large amounts of text when viewed from angle.
 var MAX_ANISOTROPY = 16;
 
-var FONT_BASE_URL = 'https://cdn.aframe.io/fonts/';
-var FONTS = {
+var FONT_BASE_URL = AFRAME_CDN_ROOT + 'fonts/';
+export var FONTS = {
   aileronsemibold: FONT_BASE_URL + 'Aileron-Semibold.fnt',
   dejavu: FONT_BASE_URL + 'DejaVu-sdf.fnt',
   exo2bold: FONT_BASE_URL + 'Exo2Bold.fnt',
@@ -30,7 +30,6 @@ var FONTS = {
 };
 var MSDF_FONTS = ['roboto'];
 var DEFAULT_FONT = 'roboto';
-module.exports.FONTS = FONTS;
 
 var cache = new PromiseCache();
 var fontWidthFactors = {};
@@ -46,7 +45,7 @@ var protocolRe = /^\w+:/;
  * All the stock fonts are for the `sdf` registered shader, an improved version of jam3's
  * original `sdf` shader.
  */
-module.exports.Component = registerComponent('text', {
+export var Component = registerComponent('text', {
   multiple: true,
 
   schema: {
@@ -91,6 +90,7 @@ module.exports.Component = registerComponent('text', {
     this.shaderData = {};
     this.geometry = createTextGeometry();
     this.createOrUpdateMaterial();
+    this.explicitGeoDimensionsChecked = false;
   },
 
   update: function (oldData) {
@@ -220,6 +220,10 @@ module.exports.Component = registerComponent('text', {
       }).then(function (image) {
         // Make mesh visible and apply font image as texture.
         var texture = self.texture;
+        // The component may have been removed at this point and texture will
+        // be null. This happens mainly while executing the tests,
+        // in this case we just return.
+        if (!texture) return;
         texture.image = image;
         texture.needsUpdate = true;
         textures[data.font] = texture;
@@ -297,8 +301,13 @@ module.exports.Component = registerComponent('text', {
     // Update geometry dimensions to match text layout if width and height are set to 0.
     // For example, scales a plane to fit text.
     if (geometryComponent && geometryComponent.primitive === 'plane') {
-      if (!geometryComponent.width) { el.setAttribute('geometry', 'width', width); }
-      if (!geometryComponent.height) { el.setAttribute('geometry', 'height', height); }
+      if (!this.explicitGeoDimensionsChecked) {
+        this.explicitGeoDimensionsChecked = true;
+        this.hasExplicitGeoWidth = !!geometryComponent.width;
+        this.hasExplicitGeoHeight = !!geometryComponent.height;
+      }
+      if (!this.hasExplicitGeoWidth) { el.setAttribute('geometry', 'width', width); }
+      if (!this.hasExplicitGeoHeight) { el.setAttribute('geometry', 'height', height); }
     }
 
     // Calculate X position to anchor text left, center, or right.
@@ -358,7 +367,7 @@ module.exports.Component = registerComponent('text', {
         ? data.lineHeight
         : font.common.lineHeight;
       geometryUpdateData.text = data.value.toString().replace(newLineRegex, '\n')
-                                                     .replace(tabRegex, '\t');
+        .replace(tabRegex, '\t');
       geometryUpdateData.width = computeWidth(data.wrapPixels, data.wrapCount,
                                               font.widthFactor);
       geometry.update(utils.extend(geometryUpdateBase, data, geometryUpdateData));
@@ -398,7 +407,7 @@ function loadFont (src, yOffset) {
 
       // Fix negative Y offsets for Roboto MSDF font from tool. Experimentally determined.
       if (src.indexOf('/Roboto-msdf.json') >= 0) { yOffset = 30; }
-      if (yOffset) { font.chars.map(function doOffset (ch) { ch.yoffset += yOffset; }); }
+      if (yOffset) { font.chars.forEach(function doOffset (ch) { ch.yoffset += yOffset; }); }
 
       resolve(font);
     });
@@ -455,7 +464,7 @@ function computeFontWidthFactor (font) {
   var sum = 0;
   var digitsum = 0;
   var digits = 0;
-  font.chars.map(function (ch) {
+  font.chars.forEach(function (ch) {
     sum += ch.xadvance;
     if (ch.id >= 48 && ch.id <= 57) {
       digits++;

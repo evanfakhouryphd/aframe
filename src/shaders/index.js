@@ -1,5 +1,6 @@
-require('./flat');
-require('./standard');
-require('./sdf');
-require('./msdf');
-require('./ios10hls');
+import './flat.js';
+import './standard.js';
+import './phong.js';
+import './sdf.js';
+import './msdf.js';
+import './shadow.js';

@@ -1,4 +1,4 @@
-var registerPrimitive = require('../primitives').registerPrimitive;
+import { registerPrimitive } from '../primitives.js';
 
 registerPrimitive('a-light', {
   defaultComponents: {
@@ -14,6 +14,8 @@ registerPrimitive('a-light', {
     intensity: 'light.intensity',
     penumbra: 'light.penumbra',
     type: 'light.type',
-    target: 'light.target'
+    target: 'light.target',
+    envmap: 'light.envMap',
+    'shadow-camera-automatic': 'light.shadowCameraAutomatic'
   }
 });

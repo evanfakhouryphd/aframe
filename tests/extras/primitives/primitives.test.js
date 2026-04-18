@@ -1,7 +1,6 @@
 /* global AFRAME, assert, suite, test, THREE */
-var helpers = require('../../helpers');
-var registerPrimitive = require('extras/primitives/primitives').registerPrimitive;
-var primitives = require('extras/primitives/primitives').primitives;
+import * as helpers from '../../helpers.js';
+import { registerPrimitive, primitives } from 'extras/primitives/primitives.js';
 
 var primitiveId = 0;
 
@@ -66,7 +65,7 @@ suite('registerPrimitive', function () {
     }, function (el) {
       el.setAttribute('color', 'tomato');
       el.setAttribute('position-aliased', '1 2 3');
-      process.nextTick(function () {
+      setTimeout(function () {
         assert.equal(el.getAttribute('material').color, 'tomato');
         assert.equal(el.getAttribute('position').x, 1);
         done();
@@ -225,6 +224,23 @@ suite('registerPrimitive (using innerHTML)', function () {
     });
   });
 
+  test('applies mappings to mixin attributes', function (done) {
+    AFRAME.registerComponent('test', {
+      schema: {default: 'foo'}
+    });
+    primitiveFactory({
+      defaultComponents: {
+        material: {color: 'blue'}
+      },
+      mappings: {foo: 'material.color'}
+    }, 'mixin="bar"', function postCreation (el) {
+      assert.equal(el.getAttribute('material').color, 'purple');
+      done();
+    }, function preCreation (sceneEl) {
+      helpers.mixinFactory('bar', {foo: 'purple'}, sceneEl);
+    });
+  });
+
   test('handles mapping to a single-property component', function (done) {
     primitiveFactory({
       mappings: {
@@ -303,7 +319,7 @@ suite('registerPrimitive (using innerHTML)', function () {
       count++;
       if (count >= 2) {
         evt.detail.el.addEventListener('loaded', function () {
-          process.nextTick(function () {
+          setTimeout(function () {
             assert.equal(el.children[0].getAttribute('material').color, 'red');
             assert.equal(el.children[1].getAttribute('material').color, 'blue');
             done();
@@ -326,7 +342,7 @@ suite('registerPrimitive (using innerHTML)', function () {
     }, 'mixin="bar"', function postCreation (el) {
       assert.equal(el.getAttribute('material').color, 'orange');
       document.querySelector('[mixin="bar"]').setAttribute('material', 'color: black');
-      process.nextTick(function () {
+      setTimeout(function () {
         assert.equal(el.getAttribute('material').color, 'black');
         el.setAttribute('foo', 'purple');
         setTimeout(function () {

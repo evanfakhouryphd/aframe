@@ -1,11 +1,13 @@
-/* global assert, process, setup, suite, test */
-var entityFactory = require('../helpers').entityFactory;
-var degToRad = require('index').THREE.Math.degToRad;
+/* global assert, setup, suite, test */
+import { entityFactory } from '../helpers.js';
+import THREE from 'lib/three.js';
+var degToRad = THREE.MathUtils.degToRad;
 
 suite('rotation', function () {
   setup(function (done) {
     var el = this.el = entityFactory();
     el.setAttribute('rotation', '');
+    if (el.hasLoaded) { done(); }
     el.addEventListener('loaded', function () {
       done();
     });

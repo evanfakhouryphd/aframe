@@ -1,5 +1,5 @@
 /* global assert, suite, test */
-var utils = require('index').utils;
+import * as utils from 'utils/index.js';
 
 var diff = utils.diff;
 var deepEqual = utils.deepEqual;
@@ -124,7 +124,8 @@ suite('utils.objects', function () {
     });
 
     test('can compare the same object with self reference', function () {
-      var objA = {x: 0, y: 0, z: 0, self: objA};
+      var objA = {x: 0, y: 0, z: 0};
+      objA.self = objA;
       assert.ok(deepEqual(objA, objA));
     });
 

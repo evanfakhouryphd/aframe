@@ -30,7 +30,7 @@ Videospheres are a large sphere with the video texture mapped to the inside.
 
 ## Methods 
 
-More indepth knowledge on the methods to alter video material can be seen over [here](../components/material.html#video-textures)
+More indepth knowledge on the methods to alter video material can be seen over [here](../components/material.md#video-textures)
 
 ```javascript
 // to set specific time of video
@@ -41,8 +41,6 @@ document.querySelector("#antarctica").components.material.material.map.image.pla
 ```
 
 ## Attributes
-
-Note that the videosphere primitive inherits [common attributes](./common-attributes.md).
 
 | Attribute       | Component Mapping       | Default Value |
 |-----------------|-------------------------|---------------|
@@ -65,7 +63,7 @@ To be seamless, source videos should be [equirectangular][equirectangular].
 
 iOS has a lot of restrictions on playing videos in the browser. To play an inline video texture, we must:
 
-- Set the `<meta name="apple-mobile-web-app-capable" content="yes">` meta tag. A-Frame will will inject this if missing.
+- Set the `<meta name="apple-mobile-web-app-capable" content="yes">` meta tag. A-Frame will inject this if missing.
 - Set the `webkit-playsinline` and `playsinline` attribute to the video element. A-Frame will add this to all videos if missing).
 - Pin the webpage to the iOS homescreen.
 

@@ -1,10 +1,5 @@
-var registerComponent = require('../core/component').registerComponent;
-var bind = require('../utils/bind');
-
-var trackedControlsUtils = require('../utils/tracked-controls');
-var checkControllerPresentAndSetup = trackedControlsUtils.checkControllerPresentAndSetup;
-var emitIfAxesChanged = trackedControlsUtils.emitIfAxesChanged;
-var onButtonEvent = trackedControlsUtils.onButtonEvent;
+import { registerComponent } from '../core/component.js';
+import { checkControllerPresentAndSetup, emitIfAxesChanged, onButtonEvent } from '../utils/tracked-controls.js';
 
 var GAMEPAD_ID_PREFIX = 'generic';
 
@@ -34,14 +29,15 @@ var INPUT_MAPPING = {
  * controller buttons: trackpad, trigger
  * Load a controller model and highlight the pressed buttons.
  */
-module.exports.Component = registerComponent('generic-tracked-controller-controls', {
+export var Component = registerComponent('generic-tracked-controller-controls', {
   schema: {
     hand: {default: ''},  // This informs the degenerate arm model.
     defaultModel: {default: true},
     defaultModelColor: {default: 'gray'},
-    orientationOffset: {type: 'vec3'},
     disabled: {default: false}
   },
+
+  after: ['tracked-controls'],
 
   /**
    * Button IDs:
@@ -51,27 +47,25 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
   mapping: INPUT_MAPPING,
 
   bindMethods: function () {
-    this.onControllersUpdate = bind(this.onControllersUpdate, this);
-    this.checkIfControllerPresent = bind(this.checkIfControllerPresent, this);
-    this.removeControllersUpdateListener = bind(this.removeControllersUpdateListener, this);
-    this.onAxisMoved = bind(this.onAxisMoved, this);
+    this.onControllersUpdate = this.onControllersUpdate.bind(this);
+    this.checkIfControllerPresent = this.checkIfControllerPresent.bind(this);
+    this.removeControllersUpdateListener = this.removeControllersUpdateListener.bind(this);
+    this.onAxisMoved = this.onAxisMoved.bind(this);
   },
 
   init: function () {
     var self = this;
-    this.onButtonChanged = bind(this.onButtonChanged, this);
+    this.onButtonChanged = this.onButtonChanged.bind(this);
     this.onButtonDown = function (evt) { onButtonEvent(evt.detail.id, 'down', self); };
     this.onButtonUp = function (evt) { onButtonEvent(evt.detail.id, 'up', self); };
     this.onButtonTouchStart = function (evt) { onButtonEvent(evt.detail.id, 'touchstart', self); };
     this.onButtonTouchEnd = function (evt) { onButtonEvent(evt.detail.id, 'touchend', self); };
     this.controllerPresent = false;
     this.wasControllerConnected = false;
-    this.lastControllerCheck = 0;
-    this.rendererSystem = this.el.sceneEl.systems.renderer;
     this.bindMethods();
 
     // generic-tracked-controller-controls has the lowest precedence.
-    // We must diable this component if there are more specialized controls components.
+    // Disable this component if there are more specialized controls components.
     this.el.addEventListener('controllerconnected', function (evt) {
       if (evt.detail.name === self.name) { return; }
       self.wasControllerConnected = true;
@@ -133,8 +127,7 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
     }
     el.setAttribute('tracked-controls', {
       hand: data.hand,
-      idPrefix: GAMEPAD_ID_PREFIX,
-      orientationOffset: data.orientationOffset,
+      id: GAMEPAD_ID_PREFIX,
       iterateControllerProfiles: true
     });
     if (!this.data.defaultModel) { return; }
@@ -150,6 +143,7 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
   },
 
   onControllersUpdate: function () {
+    if (!this.wasControllerConnected) { return; }
     this.checkIfControllerPresent();
   },
 
@@ -172,5 +166,10 @@ module.exports.Component = registerComponent('generic-tracked-controller-control
     });
     modelEl.setAttribute('material', {color: this.data.color});
     this.el.appendChild(modelEl);
+    this.el.emit('controllermodelready', {
+      name: 'generic-tracked-controller-controls',
+      model: this.modelEl,
+      rayOrigin: {origin: {x: 0, y: 0, z: -0.01}, direction: {x: 0, y: 0, z: -1}}
+    });
   }
 });

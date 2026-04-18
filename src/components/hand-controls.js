@@ -1,14 +1,16 @@
-/* global THREE */
-var registerComponent = require('../core/component').registerComponent;
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { registerComponent } from '../core/component.js';
+import { AFRAME_CDN_ROOT } from '../constants/index.js';
 
 // Found at https://github.com/aframevr/assets.
 var MODEL_URLS = {
-  toonLeft: 'https://cdn.aframe.io/controllers/hands/leftHand.glb',
-  toonRight: 'https://cdn.aframe.io/controllers/hands/rightHand.glb',
-  lowPolyLeft: 'https://cdn.aframe.io/controllers/hands/leftHandLow.glb',
-  lowPolyRight: 'https://cdn.aframe.io/controllers/hands/rightHandLow.glb',
-  highPolyLeft: 'https://cdn.aframe.io/controllers/hands/leftHandHigh.glb',
-  highPolyRight: 'https://cdn.aframe.io/controllers/hands/rightHandHigh.glb'
+  toonLeft: AFRAME_CDN_ROOT + 'controllers/hands/leftHand.glb',
+  toonRight: AFRAME_CDN_ROOT + 'controllers/hands/rightHand.glb',
+  lowPolyLeft: AFRAME_CDN_ROOT + 'controllers/hands/leftHandLow.glb',
+  lowPolyRight: AFRAME_CDN_ROOT + 'controllers/hands/rightHandLow.glb',
+  highPolyLeft: AFRAME_CDN_ROOT + 'controllers/hands/leftHandHigh.glb',
+  highPolyRight: AFRAME_CDN_ROOT + 'controllers/hands/rightHandHigh.glb'
 };
 
 // Poses.
@@ -34,7 +36,7 @@ EVENTS[ANIMATIONS.point] = 'pointing';
 
 /**
  * Hand controls component that abstracts 6DoF controls:
- *   oculus-touch-controls, vive-controls, windows-motion-controls.
+ *   meta-touch-controls, vive-controls, windows-motion-controls.
  *
  * Originally meant to be a sample implementation of applications-specific controls that
  * abstracts multiple types of controllers.
@@ -47,22 +49,22 @@ EVENTS[ANIMATIONS.point] = 'pointing';
  *
  * @property {string} Hand mapping (`left`, `right`).
  */
-module.exports.Component = registerComponent('hand-controls', {
+export var Component = registerComponent('hand-controls', {
   schema: {
     color: {default: 'white', type: 'color'},
     hand: { default: 'left' },
     handModelStyle: {default: 'lowPoly', oneOf: ['lowPoly', 'highPoly', 'toon']}
   },
 
+  after: ['tracked-controls'],
+
   init: function () {
     var self = this;
     var el = this.el;
-    // Current pose.
-    this.gesture = ANIMATIONS.open;
     // Active buttons populated by events provided by the attached controls.
     this.pressedButtons = {};
     this.touchedButtons = {};
-    this.loader = new THREE.GLTFLoader();
+    this.loader = new GLTFLoader();
     this.loader.setCrossOrigin('anonymous');
 
     this.onGripDown = function () { self.handleButton('grip', 'down'); };
@@ -111,8 +113,20 @@ module.exports.Component = registerComponent('hand-controls', {
     mesh.mixer.update(delta / 1000);
   },
 
-  onControllerConnected: function () {
-    this.el.object3D.visible = true;
+  onControllerConnected: function (evt) {
+    var el = this.el;
+    var hand = this.data.hand;
+    var mesh = this.el.getObject3D('mesh');
+
+    el.object3D.visible = true;
+
+    var handModelOrientationZ = hand === 'left' ? Math.PI / 2 : -Math.PI / 2;
+    // The WebXR standard defines the grip space such that a cylinder held in a closed hand points
+    // along the Z axis. The models currently have such a cylinder point along the X-Axis.
+    var handModelOrientationX = el.sceneEl.hasWebXR ? -Math.PI / 4 : 0;
+
+    mesh.position.set(0, 0, 0.02);
+    mesh.rotation.set(handModelOrientationX, 0, handModelOrientationZ);
   },
 
   onControllerDisconnected: function () {
@@ -198,19 +212,19 @@ module.exports.Component = registerComponent('hand-controls', {
       var handmodelUrl = MODEL_URLS[handModelStyle + hand.charAt(0).toUpperCase() + hand.slice(1)];
       this.loader.load(handmodelUrl, function (gltf) {
         var mesh = gltf.scene.children[0];
-        var handModelOrientation = hand === 'left' ? Math.PI / 2 : -Math.PI / 2;
         mesh.mixer = new THREE.AnimationMixer(mesh);
         self.clips = gltf.animations;
         el.setObject3D('mesh', mesh);
-
-        var handMaterial = mesh.children[1].material;
-        handMaterial.color = new THREE.Color(handColor);
-        mesh.position.set(0, 0, 0);
-        mesh.rotation.set(0, 0, handModelOrientation);
+        mesh.traverse(function (object) {
+          if (!object.isMesh) { return; }
+          object.material.color = new THREE.Color(handColor);
+        });
         el.setAttribute('magicleap-controls', controlConfiguration);
         el.setAttribute('vive-controls', controlConfiguration);
-        el.setAttribute('oculus-touch-controls', controlConfiguration);
+        el.setAttribute('meta-touch-controls', controlConfiguration);
+        el.setAttribute('pico-controls', controlConfiguration);
         el.setAttribute('windows-motion-controls', controlConfiguration);
+        el.setAttribute('hp-mixed-reality-controls', controlConfiguration);
       });
     }
   },
@@ -355,34 +369,37 @@ module.exports.Component = registerComponent('hand-controls', {
 
     if (!mesh) { return; }
 
-    // Stop all current animations.
-    mesh.mixer.stopAllAction();
-
     // Grab clip action.
     clip = this.getClip(gesture);
     toAction = mesh.mixer.clipAction(clip);
+
+    // Reverse from gesture to no gesture.
+    if (reverse) {
+      toAction.paused = false;
+      toAction.timeScale = -1;
+      return;
+    }
+
     toAction.clampWhenFinished = true;
-    toAction.loop = THREE.LoopRepeat;
+    toAction.loop = THREE.LoopOnce;
     toAction.repetitions = 0;
-    toAction.timeScale = reverse ? -1 : 1;
-    toAction.time = reverse ? clip.duration : 0;
+    toAction.timeScale = 1;
+    toAction.time = 0;
     toAction.weight = 1;
 
-    // No gesture to gesture or gesture to no gesture.
-    if (!lastGesture || gesture === lastGesture) {
-      // Stop all current animations.
-      mesh.mixer.stopAllAction();
+    // No gesture to gesture.
+    if (!lastGesture) {
       // Play animation.
+      mesh.mixer.stopAllAction();
       toAction.play();
       return;
     }
 
     // Animate or crossfade from gesture to gesture.
     clip = this.getClip(lastGesture);
-    fromAction = mesh.mixer.clipAction(clip);
-    fromAction.weight = 0.15;
-    fromAction.play();
+    toAction.reset();
     toAction.play();
+    fromAction = mesh.mixer.clipAction(clip);
     fromAction.crossFadeTo(toAction, 0.15, true);
   }
 });

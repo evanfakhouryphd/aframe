@@ -1,5 +1,5 @@
 /* global assert, suite, test, setup */
-var helpers = require('../../../helpers');
+import * as helpers from '../../../helpers.js';
 
 suite('a-sky', function () {
   setup(function (done) {
@@ -15,7 +15,7 @@ suite('a-sky', function () {
 
   test('can set theta-length', function (done) {
     this.el.setAttribute('theta-length', 90);
-    process.nextTick(() => {
+    setTimeout(() => {
       assert.equal(this.el.getAttribute('geometry').thetaLength, 90);
       done();
     });
@@ -23,7 +23,7 @@ suite('a-sky', function () {
 
   test('can set radius', function (done) {
     this.el.setAttribute('radius', 30);
-    process.nextTick(() => {
+    setTimeout(() => {
       assert.equal(this.el.getAttribute('geometry').radius, 30);
       done();
     });

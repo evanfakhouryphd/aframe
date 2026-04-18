@@ -9,20 +9,13 @@ source_code: src/components/laser-controls.js
 examples: []
 ---
 
-[dof]: http://www.roadtovr.com/introduction-positional-tracking-degrees-freedom-dof/
+The laser-controls component provides a tracked controller with a laser or ray
+cursor shooting out to be used for input and interactions. All headsets ship with some form of 
+tracked input controller that has at least a button to trigger actions. Using laser-controls we can
+get a consistent form of interaction that works across all VR platforms with
+a single line of HTML.
 
-The laser-controls component provides tracked controls with a laser or ray
-cursor shooting out to be used for input and interactions. *DoF* stands for
-[degrees of freedom][dof]. Because they only require rotation and some form of
-input, laser-based interactions scale well across 0 DoF (gaze-based,
-Cardboard), 3 DoF (Daydream, GearVR with controllers), and 6 DoF (Vive, Oculus
-Touch). If desired, we can get a consistent form of interaction that works
-across all VR platforms with a single line of HTML.
-
-[daydream-controls]: ./daydream-controls.md
-[gearvr-controls]: ./gearvr-controls.md
-[oculus-touch-controls]: ./oculus-touch-controls.md
-[tracked-controls]: ./tracked-controls.md
+[meta-touch-controls]: ./meta-touch-controls.md
 [vive-controls]: ./vive-controls.md
 [windows-motion-controls]: ./windows-motion-controls.md
 
@@ -31,9 +24,7 @@ configures other components, rather than implementing any logic itself. Under
 the hood, laser-controls sets all of the tracked controller components:
 
 - [vive-controls]
-- [oculus-touch-controls]
-- [daydream-controls]
-- [gearvr-controls]
+- [meta-touch-controls]
 - [windows-motion-controls]
 
 [cursor]: ./cursor.md
@@ -42,8 +33,11 @@ the hood, laser-controls sets all of the tracked controller components:
 These controller components get activated if its respective controller is
 connected and detected via the Gamepad API. Then the model of the actual
 controller is used. laser-controls then configures the [cursor
-component][cursor] for listen to the appropriate events and configures the
-[raycaster component][raycaster] to draw the laser.
+component][cursor] to listen to the appropriate events and passes the `hand`
+property to ensure WebXR events are filtered by controller handedness. This
+prevents one controller's trigger press from affecting another controller's
+hovered entity. It also configures the [raycaster component][raycaster] to draw
+the laser.
 
 When the laser intersects with an entity, the length of the line gets truncated
 to the distance to the intersection point.

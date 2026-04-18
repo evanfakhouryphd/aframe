@@ -1,5 +1,5 @@
-/* global assert, process, setup, suite, test */
-var helpers = require('../../helpers');
+/* global assert, setup, suite, test */
+import * as helpers from '../../helpers.js';
 
 suite('pool', function () {
   setup(function (done) {
@@ -96,6 +96,48 @@ suite('pool', function () {
       poolComponent.requestEntity();
       assert.equal(poolComponent.availableEls.length, 0);
       assert.equal(poolComponent.usedEls.length, 2);
+    });
+  });
+
+  suite('attachmentToThreeScene', function () {
+    test('Pool entity is not initially attached to scene', function () {
+      var sceneEl = this.sceneEl;
+      var poolComponent = sceneEl.components.pool;
+      assert.equal(poolComponent.availableEls[0].object3D.parent, null);
+    });
+
+    test('Pool entity is attached to scene when requested, and detached when released', function () {
+      var sceneEl = this.sceneEl;
+      var poolComponent = sceneEl.components.pool;
+      var el = poolComponent.requestEntity();
+      assert.equal(el.object3D.parent, sceneEl.object3D);
+      poolComponent.returnEntity(el);
+      assert.equal(el.object3D.parent, null);
+    });
+
+    test('Raycaster is updated when entities are attached to / detached from scene', function (done) {
+      var sceneEl = this.sceneEl;
+      var rayEl = document.createElement('a-entity');
+      rayEl.setAttribute('raycaster', '');
+      rayEl.addEventListener('loaded', function () {
+        var rayComponent = rayEl.components.raycaster;
+        assert.equal(rayComponent.dirty, true);
+        rayComponent.tock();
+        assert.equal(rayComponent.dirty, false);
+        var poolComponent = sceneEl.components.pool;
+        var el = poolComponent.requestEntity();
+        assert.equal(el.object3D.parent, sceneEl.object3D);
+        assert.equal(rayComponent.dirty, true);
+        rayComponent.tock();
+        assert.equal(rayComponent.dirty, false);
+        poolComponent.returnEntity(el);
+        assert.equal(el.object3D.parent, null);
+        assert.equal(rayComponent.dirty, true);
+        rayComponent.tock();
+        assert.equal(rayComponent.dirty, false);
+        done();
+      });
+      sceneEl.appendChild(rayEl);
     });
   });
 

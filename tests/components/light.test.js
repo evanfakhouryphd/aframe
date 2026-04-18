@@ -1,11 +1,12 @@
-/* global assert, process, setup, suite, test */
-var entityFactory = require('../helpers').entityFactory;
-var THREE = require('index').THREE;
+/* global assert, setup, suite, test */
+import { entityFactory } from '../helpers.js';
+import THREE from 'lib/three.js';
 
 suite('light', function () {
   setup(function (done) {
     var el = this.el = entityFactory();
     el.setAttribute('light', '');
+    if (el.hasLoaded) { done(); }
     el.addEventListener('loaded', function () {
       done();
     });

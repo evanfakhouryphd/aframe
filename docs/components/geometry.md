@@ -25,6 +25,9 @@ property defines the general shape. Geometric primitives, in computer graphics,
 are irreducible basic shapes. A material component is commonly defined to
 provide an appearance alongside the shape to create a complete mesh.
 
+Overview of available geometries:
+![all-available-a-frame-geometries](https://github.com/aframevr/aframe/assets/57718207/38e649bb-23c3-4a16-b0a2-cc34c33c1cca)
+
 <!--toc-->
 
 ## Base Properties
@@ -177,6 +180,18 @@ The octahedron geometry creates a polygon with eight equilateral triangular face
 |----------|----------------------------------------|---------------|
 | radius   | Radius (in meters) of the octahedron. | 1             |
 
+### `icosahedron`
+
+The icosahedron geometry creates a polygon with twenty equilateral triangular faces.
+
+```html
+<a-entity geometry="primitive: icosahedron"></a-entity>
+```
+
+| Property | Description                            | Default Value |
+|----------|----------------------------------------|---------------|
+| radius   | Radius (in meters) of the icosahedron. | 1             |
+
 ### `plane`
 
 The plane geometry creates a flat surface. Because planes are flat, A-Frame
@@ -307,7 +322,12 @@ the `material` component.
 ## Register a Custom Geometry
 
 We can register our own geometries using `AFRAME.registerGeometry` and creating
-an object that is an instance of [`THREE.Geometry`][three-geometry]. A-Frame
+an object that is an instance of [`THREE.BufferGeometry`][three-geometry].
+Recent versions of three.js rename generators such as PlaneBufferGeometry to just
+[PlaneGeometry](https://threejs.org/docs/#api/en/geometries/PlaneGeometry),
+but support the old name as an alias. See the three.js manual to learn about creating a
+[custom `BufferGeometry`](https://threejs.org/manual/#en/custom-buffergeometry).
+A-Frame
 registers all built-in geometries using this API. Here is how A-Frame registers
 the `box` geometry:
 
@@ -346,17 +366,16 @@ AFRAME.registerGeometry('example', {
   },
 
   init: function (data) {
-    var geometry = new THREE.Geometry();
-    geometry.vertices = data.vertices.map(function (vertex) {
-        var points = vertex.split(' ').map(function(x){return parseInt(x);});
-        return new THREE.Vector3(points[0], points[1], points[2]);
-    });
-    geometry.computeBoundingBox();
-    geometry.faces.push(new THREE.Face3(0, 1, 2));
-    geometry.mergeVertices();
-    geometry.computeFaceNormals();
-    geometry.computeVertexNormals();
-    this.geometry = geometry;
+    var geometry = new THREE.BufferGeometry();
+     const pointsArray = new Array();
+     data.vertices.map(function (vertex) {
+     var points = vertex.split(' ').map(function(x){return parseInt(x);});
+     pointsArray.push(new THREE.Vector3(points[0], points[1], points[2]));
+     });
+     geometry.setFromPoints(pointsArray);
+     geometry.computeBoundingBox();
+     geometry.computeVertexNormals();
+     this.geometry = geometry;
   }
 });
 ```
@@ -370,4 +389,4 @@ We can then use that custom geometry in HTML:
 [cd]: https://en.wikipedia.org/wiki/Compact_disc
 [component-schema]: ../core/component.md#schema
 [prisms-wiki]: https://en.wikipedia.org/wiki/Prism_%28geometry%29
-[three-geometry]: https://threejs.org/docs/#api/core/Geometry
+[three-geometry]: https://threejs.org/docs/#api/en/core/BufferGeometry

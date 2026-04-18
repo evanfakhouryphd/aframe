@@ -1,6 +1,8 @@
-/* global assert, process, setup, suite, test, sinon */
-var constants = require('constants/');
-var entityFactory = require('../helpers').entityFactory;
+/* global assert, setup, suite, test, sinon */
+import * as constants from 'constants/index.js';
+import { entityFactory } from '../helpers.js';
+
+var IMG_SRC = '/base/tests/assets/test.png';
 
 suite('camera system', function () {
   var sceneEl;
@@ -30,14 +32,14 @@ suite('camera system', function () {
 
   test('uses defined camera if defined', function (done) {
     var assetsEl;
-    var imgEl;  // Image that will never load.
+    var imgEl;
     var cameraEl;
     var sceneEl;
 
     // Create assets.
     assetsEl = document.createElement('a-assets');
     imgEl = document.createElement('img');
-    imgEl.setAttribute('src', 'neverloadlalala5.gif');
+    imgEl.setAttribute('src', IMG_SRC);
     assetsEl.appendChild(imgEl);
 
     // Create scene.
@@ -57,7 +59,7 @@ suite('camera system', function () {
     document.body.appendChild(sceneEl);
 
     // Trigger scene load through assets. Camera will be waiting for assets.
-    // Add `setTimeout` to mimic asynchrony of asset loading.
+    // Add `setTimeout` to mimic asynchronicity of asset loading.
     setTimeout(function () { assetsEl.load(); });
   });
 
@@ -147,7 +149,7 @@ suite('camera system', function () {
           assert.ok(cameraEl.getAttribute('camera').active);
           assert.ok(cameraSystem.setActiveCamera.calledOnce);
           assert.equal(cameraSystem.activeCameraEl, cameraEl);
-          cameraSystem.setActiveCamera.reset();
+          cameraSystem.setActiveCamera.resetHistory();
           done();
         });
       });
@@ -175,7 +177,7 @@ suite('camera system', function () {
           assert.ok(cameraEl.getAttribute('camera').active);
           assert.ok(cameraSystem.setActiveCamera.calledOnce);
           assert.equal(cameraSystem.activeCameraEl, cameraEl);
-          cameraSystem.setActiveCamera.reset();
+          cameraSystem.setActiveCamera.resetHistory();
           done();
         });
       });
@@ -221,7 +223,7 @@ suite('camera system', function () {
       var cameraEl2 = document.createElement('a-entity');
       var sceneEl = this.el.sceneEl;
       cameraEl2.setAttribute('camera', 'active: true');
-      process.nextTick(function () {
+      setTimeout(function () {
         sceneEl.appendChild(cameraEl2);
         // Need to setTimeout to wait for scene to remove element.
         cameraEl2.addEventListener('loaded', function () {

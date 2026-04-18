@@ -1,7 +1,7 @@
-/* global assert, process, setup, suite, test, sinon, AFRAME */
-var entityFactory = require('../helpers').entityFactory;
-var shaders = require('core/shader').shaders;
-var THREE = require('index').THREE;
+/* global assert, setup, suite, test, sinon, AFRAME */
+import { entityFactory } from '../helpers.js';
+import { shaders } from 'core/shader.js';
+import THREE from 'lib/three.js';
 
 var IMG_SRC = '/base/tests/assets/test.png';
 
@@ -10,7 +10,7 @@ suite('material', function () {
 
   setup(function (done) {
     el = entityFactory();
-    this.sinon = sinon.sandbox.create();
+    this.sinon = sinon.createSandbox();
     el.setAttribute('geometry', '');
     el.setAttribute('material', 'shader: flat');
     if (el.hasLoaded) { done(); }
@@ -27,7 +27,7 @@ suite('material', function () {
     test('updates material', function () {
       el.setAttribute('material', 'color: #F0F; side: double');
       assert.shallowDeepEqual(el.getObject3D('mesh').material.color,
-                             {r: 1, g: 0, b: 1});
+                              {r: 1, g: 0, b: 1});
       assert.shallowDeepEqual(el.getObject3D('mesh').material.side, THREE.DoubleSide);
     });
 
@@ -42,6 +42,36 @@ suite('material', function () {
       var disposeSpy = this.sinon.spy(material, 'dispose');
       el.setAttribute('material', 'shader', 'standard');
       assert.ok(disposeSpy.called);
+    });
+
+    test('disposes material when removing material', function () {
+      var material = el.getObject3D('mesh').material;
+      var disposeSpy = this.sinon.spy(material, 'dispose');
+      el.removeAttribute('material');
+      assert.ok(disposeSpy.called);
+    });
+
+    test('disposes textures when removing material', function () {
+      var material = el.getObject3D('mesh').material;
+      var texture1 = {uuid: 'tex1', isTexture: true, dispose: sinon.spy()};
+      var texture2 = {uuid: 'tex2', isTexture: true, dispose: sinon.spy()};
+      material.map = texture1;
+      material.normalMap = texture2;
+      el.removeAttribute('material');
+      assert.ok(texture1.dispose.called);
+      assert.ok(texture2.dispose.called);
+    });
+
+    test('disposes texture when removing texture', function (done) {
+      var imageUrl = 'base/tests/assets/test.png';
+      el.setAttribute('material', 'src: url(' + imageUrl + ')');
+      el.addEventListener('materialtextureloaded', function (evt) {
+        var loadedTexture = evt.detail.texture;
+        var disposeSpy = sinon.spy(loadedTexture, 'dispose');
+        el.setAttribute('material', 'src', '');
+        assert.ok(disposeSpy.called);
+        done();
+      });
     });
 
     test('defaults to standard material', function () {
@@ -93,6 +123,21 @@ suite('material', function () {
       });
     });
 
+    test('updates texture when repeat changes', function (done) {
+      var imageUrl = 'base/tests/assets/test.png';
+      el.setAttribute('material', '');
+      assert.notOk(el.components.material.material.texture);
+      el.setAttribute('material', 'src: url(' + imageUrl + ')');
+      el.addEventListener('materialtextureloaded', function (evt) {
+        var loadedTexture = evt.detail.texture;
+        assert.ok(el.components.material.material.map === loadedTexture);
+        var version = loadedTexture.version;
+        el.setAttribute('material', 'repeat', '2 2');
+        assert.ok(el.components.material.material.map.version > version);
+        done();
+      });
+    });
+
     test('removes texture when src attribute removed', function (done) {
       var imageUrl = 'base/tests/assets/test.png';
       el.setAttribute('material', '');
@@ -128,28 +173,36 @@ suite('material', function () {
       var textureLoaderSpy = this.sinon.spy(THREE.TextureLoader.prototype, 'load');
       img.setAttribute('src', IMG_SRC);
       img.setAttribute('id', 'foo');
-      THREE.Cache.files[IMG_SRC] = img;
+      THREE.Cache.clear();
       assetsEl.appendChild(img);
       el.sceneEl.appendChild(assetsEl);
+      // Adding the asset will add image:${IMG_SRC} in THREE.Cache when the img
+      // loading is complete with img.onload, without going through THREE.ImageLoader
+      assert.notOk(!!THREE.Cache.get(`image:${IMG_SRC}`));
       el.addEventListener('materialtextureloaded', function () {
         assert.notOk(imageLoaderSpy.called);
         assert.notOk(textureLoaderSpy.called);
-        delete THREE.Cache.files[IMG_SRC];
         THREE.ImageLoader.prototype.load.restore();
         THREE.TextureLoader.prototype.load.restore();
-        done();
+        // load event is triggered after this materialtextureloaded callback
+        img.addEventListener('load', function () {
+          assert.equal(THREE.Cache.get(`image:${IMG_SRC}`), img);
+          THREE.Cache.clear();
+          done();
+        }, {once: true});
       });
       el.setAttribute('material', 'src', '#foo');
     });
 
     test('invokes XHR if <img> not cached', function (done) {
-      var textureLoaderSpy = this.sinon.spy(THREE.TextureLoader.prototype, 'load');
+      var imageLoaderSpy = this.sinon.spy(THREE.ImageLoader.prototype, 'load');
       el.addEventListener('materialtextureloaded', function () {
-        assert.ok(textureLoaderSpy.called);
-        assert.ok(IMG_SRC in THREE.Cache.files);
-        THREE.TextureLoader.prototype.load.restore();
+        assert.ok(imageLoaderSpy.called);
+        assert.ok(!!THREE.Cache.get(`image:${IMG_SRC}`));
+        THREE.ImageLoader.prototype.load.restore();
         done();
       });
+      // The image is loaded via the material system using THREE.ImageLoader
       el.setAttribute('material', 'src', IMG_SRC);
     });
 
@@ -167,10 +220,8 @@ suite('material', function () {
       el.components.material.updateSchema({shader: 'flat'});
       assert.ok(el.components.material.schema.color);
       assert.ok(el.components.material.schema.fog);
-      assert.ok(el.components.material.schema.height);
       assert.ok(el.components.material.schema.repeat);
       assert.ok(el.components.material.schema.src);
-      assert.ok(el.components.material.schema.width);
       assert.notOk(el.components.material.schema.metalness);
       assert.notOk(el.components.material.schema.roughness);
       assert.notOk(el.components.material.schema.envMap);
@@ -232,14 +283,14 @@ suite('material', function () {
       assert.equal(el.getObject3D('mesh').material.side, THREE.DoubleSide);
     });
 
-    test('sets material.needsUpdate true if side switchs from/to double', function () {
+    test('sets material.needsUpdate true if side switches from/to double', function () {
       var oldMaterialVersion = el.getObject3D('mesh').material.version;
       el.setAttribute('material', 'side: front');
       assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion);
       el.setAttribute('material', 'side: double');
-      assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion + 2);
+      assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion + 1);
       el.setAttribute('material', 'side: front');
-      assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion + 4);
+      assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion + 2);
     });
   });
 
@@ -293,28 +344,22 @@ suite('material', function () {
       el.setAttribute('material', 'alphaTest: 0.0');
       assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion);
       el.setAttribute('material', 'alphaTest: 1.0');
+      // A-Frame sets needsUpdate once and THREE one more internally when setting alphaTest.
       assert.equal(el.getObject3D('mesh').material.version, oldMaterialVersion + 2);
     });
   });
 
-  suite('vertexColor', function () {
+  suite('vertexColors', function () {
     test('defaults to no color', function () {
-      assert.equal(el.getAttribute('material').vertexColors, 'none');
-      assert.equal(el.components.material.material.vertexColors, THREE.NoColors);
+      assert.equal(el.getAttribute('material').vertexColorsEnabled, false);
+      assert.equal(el.components.material.material.vertexColors, false);
     });
 
-    test('can set to vertex color', function () {
+    test('can set vertex colors using vertexColorsEnabled property', function () {
       var oldMaterialVersion = el.getObject3D('mesh').material.version;
-      el.setAttribute('material', 'vertexColors', 'vertex');
-      assert.equal(el.components.material.material.vertexColors, THREE.VertexColors);
-      assert.equal(el.components.material.material.version, oldMaterialVersion + 2);
-    });
-
-    test('can set to face color', function () {
-      var oldMaterialVersion = el.getObject3D('mesh').material.version;
-      el.setAttribute('material', 'vertexColors', 'face');
-      assert.equal(el.components.material.material.vertexColors, THREE.FaceColors);
-      assert.equal(el.components.material.material.version, oldMaterialVersion + 2);
+      el.setAttribute('material', 'vertexColorsEnabled', true);
+      assert.equal(el.components.material.material.vertexColors, true);
+      assert.equal(el.components.material.material.version, oldMaterialVersion + 1);
     });
   });
 
@@ -340,7 +385,7 @@ suite('material', function () {
       assert.equal(el.components.material.material.blending, THREE.AdditiveBlending);
     });
 
-    test('can set to subtractibv', function () {
+    test('can set to subtractive', function () {
       el.setAttribute('material', 'blending', 'subtractive');
       assert.equal(el.components.material.material.blending, THREE.SubtractiveBlending);
     });
@@ -348,6 +393,54 @@ suite('material', function () {
     test('can set to multiply', function () {
       el.setAttribute('material', 'blending', 'multiply');
       assert.equal(el.components.material.material.blending, THREE.MultiplyBlending);
+    });
+
+    test('forces premultipliedAlpha when blending is multiply', function () {
+      el.setAttribute('material', 'blending: multiply; transparent: true');
+      assert.strictEqual(el.components.material.material.premultipliedAlpha, true);
+    });
+
+    test('forces premultipliedAlpha even if user sets it to false with multiply', function () {
+      el.setAttribute('material', 'blending: multiply; transparent: true; premultipliedAlpha: false');
+      assert.strictEqual(el.components.material.material.premultipliedAlpha, true);
+    });
+
+    test('premultipliedAlpha defaults to false for other blending modes', function () {
+      el.setAttribute('material', 'blending: additive; transparent: true');
+      assert.strictEqual(el.components.material.material.premultipliedAlpha, false);
+    });
+
+    test('respects user-supplied premultipliedAlpha for non-multiply blending', function () {
+      el.setAttribute('material', 'blending: additive; transparent: true; premultipliedAlpha: true');
+      assert.strictEqual(el.components.material.material.premultipliedAlpha, true);
+    });
+  });
+
+  suite('anisotropy', function () {
+    test('defaults to THREE.Texture.DEFAULT_ANISOTROPY', function (done) {
+      var imageUrl = 'base/tests/assets/test.png';
+      el.setAttribute('material', '');
+      assert.notOk(el.components.material.material.texture);
+      el.setAttribute('material', 'src: url(' + imageUrl + ')');
+      el.addEventListener('materialtextureloaded', function (evt) {
+        var loadedTexture = evt.detail.texture;
+        assert.ok(el.components.material.material.map === loadedTexture);
+        assert.strictEqual(loadedTexture.anisotropy, THREE.Texture.DEFAULT_ANISOTROPY);
+        done();
+      });
+    });
+
+    test('can set specific anisotropic filtering sample rate', function (done) {
+      var imageUrl = 'base/tests/assets/test.png';
+      el.setAttribute('material', '');
+      assert.notOk(el.components.material.material.texture);
+      el.setAttribute('material', 'src: url(' + imageUrl + '); anisotropy: 8');
+      el.addEventListener('materialtextureloaded', function (evt) {
+        var loadedTexture = evt.detail.texture;
+        assert.ok(el.components.material.material.map === loadedTexture);
+        assert.strictEqual(loadedTexture.anisotropy, 8);
+        done();
+      });
     });
   });
 });

@@ -1,6 +1,6 @@
-/* global assert, process, setup, suite, test */
-var constants = require('constants/');
-var entityFactory = require('../helpers').entityFactory;
+/* global assert, setup, suite, test */
+import * as constants from 'constants/index.js';
+import { entityFactory } from '../helpers.js';
 var DEFAULT_LIGHT_ATTR = 'data-aframe-default-light';
 
 suite('light system', function () {
@@ -60,7 +60,7 @@ suite('light system', function () {
     assert.notOk(document.querySelectorAll('[light]').length);
 
     el.sceneEl.systems.light.setupDefaultLights();
-    process.nextTick(function () {
+    setTimeout(function () {
       assert.notOk(document.querySelectorAll('[' + DEFAULT_LIGHT_ATTR + ']').length);
       done();
     });

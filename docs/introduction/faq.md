@@ -9,7 +9,7 @@ order: 14
 [ecs]: ./entity-component-system.md
 [github]: http://github.com/aframevr/aframe/
 [three]: http://threejs.org
-[slack]: https://aframe.io/slack-invite/
+[slack]: https://aframevr.slack.com/join/shared_invite/zt-f6rne3ly-ekVaBU~Xu~fsZHXr56jacQ
 [twitter]: https://twitter.com/aframevr/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/aframe/
 
@@ -17,8 +17,8 @@ order: 14
 
 ## How is A-Frame's performance?
 
-[a-painter]: https://blog.mozvr.com/a-painter
-[tiltbrush]: https://www.tiltbrush.com/
+[a-painter]: https://github.com/aframevr/a-painter/
+[tiltbrush]: https://github.com/icosa-foundation/open-brush
 
 A-Frame can achieve native-like latency and framerate with proper browsers
 (e.g., Firefox with WebVR). For example, [A-Painter][a-painter] is [Tilt
@@ -57,12 +57,12 @@ complexity and characteristics of each individual application. To get the best
 use of resources, we will need deeper understanding about 3D graphics.  See
 [best performance practices and guidelines][bestpractices] to get started.
 
-## Why is my experiencing not entering VR or AR mode?
+## Why is my experience not entering VR or AR mode?
 
 [release]: https://github.com/aframevr/aframe/releases
 [webxr]: https://immersive-web.github.io/webxr/
 
-If you are using A-Frame 1.2.0 or older you probably need to update to the [latest release][release]. Browsers are migrating to the [WebXR standard][webxr] and old versions might no longer work.
+If you are using A-Frame 1.7.1 or older you probably need to update to the [latest release][release]. Browsers are migrating to the [WebXR standard][webxr] and old versions might no longer work.
 
 You also have to serve your content over HTTPS. The WebXR API won't be available over HTTP.
 
@@ -85,7 +85,7 @@ the same domain (directory) as your application.
 If you are trying to load a video, make sure the browser supports the video
 (i.e., encoding, framerate, size).
 
-Video autoplay policies are getting more and more strict and rules might vary accross browsers. Mandatory user gesture is now commonly enforced. For maximum compatibility, you can offer a button that the user can click to start [video playback][startplayback]. [Simple sample code][videotestcode] can be found in the docs. Pay particular attention to the [play-on-click component][videoplaycomponent]
+Video autoplay policies are getting more and more strict and rules might vary across browsers. Mandatory user gesture is now commonly enforced. For maximum compatibility, you can offer a button that the user can click to start [video playback][startplayback]. [Simple sample code][videotestcode] can be found in the docs. Pay particular attention to the [play-on-click component][videoplaycomponent]
 
 Read the [*Hosting and Publishing* guide](./hosting-and-publishing.md) for more
 information.
@@ -126,7 +126,7 @@ Mobile and desktop browsers have been tightening the video autoplay policies to 
 -[Firefox](https://hacks.mozilla.org/2019/02/firefox-66-to-block-automatically-playing-audible-video-and-audio/)
 
 [video-playback-example]: https://aframe.io/aframe/examples/test/video/
-[video-playback-code]: https://github.com/mayognaise/aframe-html-shader/
+[video-playback-code]: https://github.com/aframevr/aframe/blob/master/examples/test/video/index.html
 
 There's an [A-Frame example that includes the necessary logic][video-playback-example] to request the user clicking or tapping to start video playback. [The source code is also available][video-playback-code]
 
@@ -143,12 +143,14 @@ is possible to overlay an `<iframe>` on top of the canvas, the `<iframe>` will
 not display in VR nor can it integrate with the scene.
 
 [html-shader]: https://github.com/mayognaise/aframe-html-shader/
+[html-mesh]: https://github.com/AdaRoseCannon/aframe-htmlmesh
 
 Though, we can render basic HTML and CSS as a texture without interactivity.
 We can paint to a `<canvas>` and use the canvas as source for a texture. There
 are components in the ecosystem that enable this:
 
 - [HTML Shader][html-shader]
+- [HTML Mesh][html-mesh]
 
 ## Which 3D model formats work?
 
@@ -165,12 +167,6 @@ component][whygltf].
 
 [Wavefront (`.obj`)][obj] is also a well-known format but has some limitations
 like the lack of animation and vertex color support.
-
-There are also components in the ecosystem for loading other formats:
-
-- [`.PLY` models](https://github.com/donmccurdy/aframe-extras/blob/master/src/loaders/ply-model.js)
-- [three.js `.JSON` Object](https://github.com/donmccurdy/aframe-extras/blob/master/src/loaders/json-model.js)
-- [three.js `.JSON` Scene](https://github.com/donmccurdy/aframe-extras/blob/master/src/loaders/object-model.js)
 
 Below are a couple basic examples for using models:
 
@@ -194,7 +190,6 @@ For 360&deg; images, search for [equirectangular images on Flickr][flickr].
 
 For 3D models, check out:
 
-- [Google Blocks](https://vr.google.com/objects)
 - [Sketchfab](https://sketchfab.com)
 - [Clara.io](http://clara.io)
 - [Archive3D](http://archive3d.net)
@@ -219,13 +214,15 @@ to serve, but that is against their terms of service.
 
 ## Can I add links to my scene?
 
+[link-traversal-example]: https://aframe.io/aframe/examples/showcase/link-traversal/
+
 Browsers provide the ability to go from WebVR page to WebVR page via the
 `vrdisplayactivate` event described in the WebVR specification. Currently, not
 all browsers implement this. Firefox with WebVR implements this. A link
-component for link traversal was released with A-Frame 0.6.0:
+component for link traversal ([example][link-traversal-example]) was released with A-Frame 0.6.0:
 
 ```html
-<a-entity link="on: click; href: https://aframe-aincraft.glitch.me"></a-entity>
+<a-entity link="on: click; href: https://aframe.io/aframe/examples/docs/aincraft/"></a-entity>
 ```
 
 ## Can I prevent the camera from going through obstacles?
@@ -234,7 +231,7 @@ This depends on what devices you plan to support and how you allow users to
 navigate your scene. For most VR experiences, follow best practices and only
 move the camera proportionately to the user's motion.
 
-[teleport]: https://github.com/fernandojsg/aframe-teleport-controls
+[teleport]: https://github.com/jure/aframe-blink-controls
 
 Don't block the camera if the user steps forward in a room-scale VR space. For
 most VR applications it's better to do locomotion with methods such as using
@@ -242,7 +239,7 @@ most VR applications it's better to do locomotion with methods such as using
 of the way or not require much movement, or explore more creative ways of
 moving users through the world.
 
-[physics]: https://github.com/donmccurdy/aframe-physics-system
+[physics]: https://github.com/c-frame/aframe-physics-system
 
 For non-VR desktop experiences with a gamepad or keyboard controls or for VR
 scenes where the camera is inside a vehicle, you can add a [physics
@@ -286,20 +283,38 @@ Read [*Where to Find Components*][finding] for more information.
 ## Does A-Frame support `X` library or framework?
 
 A-Frame is built on top of the DOM so most libraries and frameworks work
-including:
+including jQuery, HTMX, React, SolidJS, Vue and Svelte.
 
-- [Vue.js](https://github.com/frederic-schwarz/aframe-vuejs-3dio)
-- [Preact](https://github.com/aframevr/aframe-react#using-with-preact)
-- [D3.js](http://blockbuilder.org/search#text=aframe)
-- [React](https://github.com/aframevr/aframe-react)
-- [Angular](https://stackoverflow.com/questions/46464103/various-errors-when-attempting-to-integrate-aframe-into-angular2-project-esp-wi)
-- jQuery
-- Ember.js
-- Meteor
+Some meta frameworks like TanStack Start and SolidStart hide the `index.html`,
+so you may encounter issues adding additional script tags and template tags (for
+Networked-Aframe).
+
+We advice you to use a template for your framework that still has an `index.html`
+you can edit and render the UI to a specific div while keeping your `<a-scene>`
+directly in `index.html`. That way you can easily follow A-Frame examples.
+If you're creating a complex app with several routes and only specific routes
+render an A-Frame scene, you'll want to add a router library and render
+`<a-scene>` via a component in your framework.
+Reactive frameworks like SolidJS and latest versions of Vue and Svelte are
+well suited for this because they doesn't do unnecessary computation to check
+if something needs to be updated. You can do that also in React but be sure to wrap
+your Scene and UI components with React.memo and proper usage of useMemo/useCallback
+or better enable the React Compiler that does this for you to avoid any performance
+issues.
+
+The Vite build tool has templates for most of the popular frameworks.
+You can follow the [Vite Guide](https://vite.dev/guide/) to create a new project
+and then add the aframe `<script>` tag in the head and the `<a-scene>` tag in
+the body.
+
+For SolidJS and Networked-Aframe, you have a
+[dedicated tutorial](https://aframe.wiki/en/#!pages/solidjs.md) explaining how
+to set up a project, and using a router to render the scene for a specific
+route. For React, it should be very similar.
 
 ## Which headsets, browsers, devices, and platforms does A-Frame support?
 
-[deviceplatform]: ./vr-headsets-and-webvr-browsers.md
+[deviceplatform]: ./vr-headsets-and-webxr-browsers.md
 
 Most of them. Read *[VR Headsets and WebVR Browsers][deviceplatform]* for more
 information.
@@ -340,4 +355,100 @@ Phones with Adreno 300 series GPUs are notoriously problematic. Set [renderer pr
 
 [New browser policies](https://www.w3.org/TR/orientation-event/#dom-deviceorientationevent-requestpermission) require sites to prompt the user for permission before getting access to DeviceMotionEvents. [Starting with iOS 13](https://webkit.org/blog/9674/new-webkit-features-in-safari-13/) DeviceMotionEvents are only available for pages served over `https`. Other browsers will also apply same policies and restrictions. A-Frame now [incorporates customizable UI](https://aframe.io/docs/1.0.0/components/device-orientation-permission-ui.html#sidebar) to request the necessary permissions to the user. Make sure to update to [A-Frame latest version](https://github.com/aframevr/aframe/releases)
 
+
+## Can I use A-Frame offline or self hosted?
+
+Using A-Frame online sometimes is not possible or inconvenient, for instance when traveling or during public events with poor Internet connectivity. A-Frame is mostly self-contained so including the build (aframe.min.js) in your project will be sufficient in many cases. Some specific parts are lazy loaded and only fetched when used. This is for example the case of the fonts for the text component and the 3D models for controllers. In order to make an A-Frame build work either offline or without relying on A-Frame hosting infrastructure (typically cdn.aframe.io), you can monitor network requests on your browser console. This will show precisely what assets are being loaded and thus as required for your specific experience. Fonts can be found via FONT_BASE_URL in the whereas controllers via MODEL_URLS. Both can be modified in the source and included in your own [custom build](https://github.com/aframevr/aframe#generating-builds).
+
+Alternatively one can set `window.AFRAME_CDN_ROOT='./assets/'` before loading AFrame. That directory can contain [files from the assets repository](https://github.com/aframevr/assets), in particular the `./fonts` and `./controllers` directories. Note that not all files are required, for example for controllers only the `.glb` files are required, others can thus be safely removed. Once again it is good to check with the browser network inspector that all needed files are loading properly locally before going truly offline.
+
+
+## Can I load A-Frame as an ES module?
+
+You can load A-Frame as an ES module using a [side effect import](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#import_a_module_for_its_side_effects_only). A-Frame will then initialize any `<a-scene>` in the document. It's still important to register any components or systems you need before this happens:
+
+```HTML
+<head>
+  <script type="importmap">
+    {
+        "imports": {
+            "aframe": "https://aframe.io/releases/1.7.1/aframe.min.js",
+        }
+    }
+  </script>
+  <script type="module">
+    import 'aframe';
+    AFRAME.registerComponent('my-component', {
+      ...
+    });
+  </script>
+</head>
+```
+
+If it's not possible to register everything synchronously to importing A-Frame, you can set the `window.AFRAME_ASYNC` flag. This prevents A-Frame from initializing `<a-scene>` tags, until you give a ready signal by calling `window.AFRAME.emitReady()`. Note that this flag must be set before importing A-Frame, as shown in the following example:
+
+```JS
+window.AFRAME_ASYNC = true;
+await import('aframe');
+
+// Asynchronously register components/systems
+
+window.AFRAME.ready();
+```
+
+Since version 1.7.1, A-Frame ships an ES module bundle without the three dependency.
+Developers can import from `three` and `three/addons` and avoid the
+"Multiple instances of Three.js being imported." warning. Add the three dependency in the importmap like the example below. 
+Make sure the three and A-Frame versions are compatible. See browser console (or package.json) to see what THREE version A-Frame ships with by default.
+
+```HTML
+<head>
+  <script type="importmap">
+    {
+      "imports": {
+        "aframe": "https://aframe.io/releases/1.7.1/aframe.module.min.js",
+        "three": "https://cdn.jsdelivr.net/npm/super-three@0.173.5/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/super-three@0.173.5/examples/jsm/",
+        "aframe-extras/controls": "https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.x/dist/aframe-extras.controls.min.js"
+      }
+    }
+  </script>
+  <script type="module">
+    import AFRAME from "aframe";
+    // AFRAME and THREE variables are available globally, the imported aframe-master.module.min.js bundle basically does:
+    // import * as THREE from "three"
+    // window.THREE = THREE
+    import { TeapotGeometry } from "three/addons/geometries/TeapotGeometry.js"; // This uses the same three instance.
+    AFRAME.registerComponent("teapot", {
+      ...
+    }
+  </script>
+</head>
+```
+
+The [importmap example](https://aframe.io/aframe/examples/boilerplate/importmap/index.html) uses the above code.
+
+## "Multiple instances of Three.js being imported." warning
+
+See `Can I load A-Frame as an ES module?` above.
+
+As a library author of aframe components, be sure to configure your bundler configuration to produce a build with the three dependency declared as external if you're using any `import ... from three` in your code or any addons you import like `import ... from three/addons/...js`.
+You can look at the webpack configuration in the [aframe-extras repository](https://github.com/c-frame/aframe-extras) as an example.
+
+## What order does A-Frame render objects in?
+
+[sortTransparentObjects]: ../components/renderer.md#sorttransparentobjects
+
+In many cases, the order in which objects is rendered doesn't matter much - most scenes will look the same whatever order the objects are rendered in - but there are a few cases where sorting is important:
+
+- for transparent objects, it's typically better to render objects furthest to nearest (although some cases are more complex and require [more sophisticated approaches](https://threejs.org/manual/?q=transp[#en/transparency)).  However, when the camera and/or objects are moving, this can result in undesirable visual effects when objects switch in terms of their relative distance from the camera
+- for performance reasons, it's typically desirable to render objects nearest to furthest, so that GPU doesn't spend time drawing pixels that end up being drawn over.
+- for AR "hider material" used to hide parts of the scene to create the appearance of occlusion by real-world objects, it's typically necessary to render these before the rest of the scene.
+
+By default, A-Frame sorts objects as follows:
+
+- for all objects, if [`renderOrder`](https://threejs.org/docs/index.html?q=object3D#api/en/core/Object3D.renderOrder) is set on the Object3D or a Group that it is a member of, the specified order will be respected
+- otherwise, opaque objects are rendered furthest to nearest, and transparent objects are rendered in the order they appear in the THREE.js Object tree (in most cases, this is the same as the order they appear in the DOM)
+
+The `renderer` system has a [`sortTransparentObjects`][sortTransparentObjects] property, which can be used to render transparent objects furthest to nearest, rather than in DOM order.
 

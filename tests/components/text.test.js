@@ -1,13 +1,13 @@
 /* global assert, setup, suite, test, THREE */
-var Component = require('components/text').Component;
-var entityFactory = require('../helpers').entityFactory;
+import { Component } from 'components/text.js';
+import { entityFactory } from '../helpers.js';
 
 suite('text', function () {
   var component;
   var el;
 
   setup(function (done) {
-    this.sinon.stub(Component.prototype, 'lookupFont', function (key) {
+    this.sinon.replace(Component.prototype, 'lookupFont', function (key) {
       return {
         default: '/base/tests/assets/test.fnt?foo',
         mozillavr: '/base/tests/assets/test.fnt?bar',
@@ -95,6 +95,14 @@ suite('text', function () {
           done();
         });
       }
+    });
+
+    test('recomputes bounding sphere on geometry update', function () {
+      component.geometry.boundingSphere = new THREE.Sphere();
+      assert.equal(component.geometry.boundingSphere.radius, -1);
+
+      el.setAttribute('text', 'value', 'foobar');
+      assert.ok(component.geometry.boundingSphere.radius > 0);
     });
 
     test('updates geometry with align', function () {
@@ -322,6 +330,52 @@ suite('text', function () {
       el.setAttribute('text', {width: 10, value: 'a'});
       assert.equal(el.getAttribute('geometry').width, 10);
       assert.ok(el.getAttribute('geometry').height);
+    });
+
+    test('autoscales mesh to text change', function () {
+      el.setAttribute('geometry', {primitive: 'plane', height: 0, width: 0});
+      assert.equal(el.getAttribute('geometry').width, 0);
+      assert.equal(el.getAttribute('geometry').height, 0);
+
+      el.setAttribute('text', {width: 10, value: 'a'});
+      assert.equal(el.getAttribute('geometry').width, 10);
+      var heightBefore = el.getAttribute('geometry').height;
+      var widthBefore = el.getAttribute('geometry').width;
+      assert.ok(heightBefore);
+
+      el.setAttribute('text', {value: 'a\nb'});
+      var heightAfter = el.getAttribute('geometry').height;
+      var widthAfter = el.getAttribute('geometry').width;
+      assert.equal(widthBefore, widthAfter);
+      assert.isAbove(heightAfter, heightBefore);
+    });
+
+    test('does not autoscale mesh with explicit width', function () {
+      el.setAttribute('geometry', {primitive: 'plane', height: 0, width: 1});
+      assert.equal(el.getAttribute('geometry').width, 1);
+      assert.equal(el.getAttribute('geometry').height, 0);
+
+      el.setAttribute('text', {width: 10, value: 'a'});
+      assert.equal(el.getAttribute('geometry').width, 1);
+      assert.isAbove(el.getAttribute('geometry').height, 0);
+
+      el.setAttribute('text', {value: 'a\nb'});
+      assert.equal(el.getAttribute('geometry').width, 1);
+      assert.isAbove(el.getAttribute('geometry').height, 0);
+    });
+
+    test('does not autoscale mesh with explicit height', function () {
+      el.setAttribute('geometry', {primitive: 'plane', height: 1, width: 0});
+      assert.equal(el.getAttribute('geometry').width, 0);
+      assert.equal(el.getAttribute('geometry').height, 1);
+
+      el.setAttribute('text', {width: 10, value: 'a'});
+      assert.isAbove(el.getAttribute('geometry').width, 0);
+      assert.equal(el.getAttribute('geometry').height, 1);
+
+      el.setAttribute('text', {value: 'a\nb'});
+      assert.isAbove(el.getAttribute('geometry').width, 0);
+      assert.equal(el.getAttribute('geometry').height, 1);
     });
 
     test('autoscales text to mesh', function () {
