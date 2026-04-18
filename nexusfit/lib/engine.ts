@@ -55,12 +55,14 @@ function repsFor(m: Movement, intensity: Intensity, rand: () => number): number 
 }
 
 function eligible(
-  equipmentSet: EquipmentSet,
+  equipmentSets: EquipmentSet[],
   type: WorkoutType,
   intensity: Intensity
 ): Movement[] {
+  const sets = equipmentSets.length > 0 ? equipmentSets : ["full_gym"];
   return MOVEMENTS.filter((m) => {
-    if (!m.availableIn.includes(equipmentSet)) return false;
+    // Movement is eligible if ANY of the selected equipment-sets allow it.
+    if (!m.availableIn.some((s) => sets.includes(s))) return false;
     const skillCap =
       intensity === "recovery" ? 2 : intensity === "aerobic" ? 3 : 5;
     if (m.skill > skillCap) return false;
@@ -451,7 +453,7 @@ function generateStrength(
     format: "strength",
     type: filters.type,
     intensity: filters.intensity,
-    equipmentSet: filters.equipment,
+    equipmentSets: filters.equipment,
     timeCapMinutes: filters.timeCapMinutes,
     config,
     segments,
@@ -528,7 +530,7 @@ function generateSCCouplet(
     format: "sc_couplet",
     type: filters.type,
     intensity: filters.intensity,
-    equipmentSet: filters.equipment,
+    equipmentSets: filters.equipment,
     timeCapMinutes: filters.timeCapMinutes,
     config,
     segments,
@@ -581,7 +583,7 @@ export function generateWorkout(
     format,
     type: filters.type,
     intensity: filters.intensity,
-    equipmentSet: filters.equipment,
+    equipmentSets: filters.equipment,
     timeCapMinutes: filters.timeCapMinutes,
     config,
     segments,
@@ -601,7 +603,7 @@ export function swapMovement(
   const current = MOVEMENT_BY_ID[currentId];
   if (!current) return null;
   const taken = new Set(workout.segments.map((s) => s.movementId));
-  const pool = eligible(workout.equipmentSet, workout.type, workout.intensity)
+  const pool = eligible(workout.equipmentSets, workout.type, workout.intensity)
     .filter((m) => m.id !== currentId && !taken.has(m.id))
     .map((m) => ({ m, score: stimulusOverlap(m, current) }))
     .filter((x) => x.score > 0)

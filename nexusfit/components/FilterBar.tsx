@@ -100,8 +100,15 @@ export function FilterBar({ value, onChange }: Props) {
           {EQUIPMENT.map((e) => (
             <Pill
               key={e.id}
-              active={value.equipment === e.id}
-              onClick={() => onChange({ ...value, equipment: e.id })}
+              active={value.equipment.includes(e.id)}
+              onClick={() => {
+                const has = value.equipment.includes(e.id);
+                const next = has
+                  ? value.equipment.filter((x) => x !== e.id)
+                  : [...value.equipment, e.id];
+                if (next.length === 0) return;
+                onChange({ ...value, equipment: next });
+              }}
             >
               <span className="flex items-center gap-2 text-sm font-medium">
                 {e.icon}
@@ -110,6 +117,9 @@ export function FilterBar({ value, onChange }: Props) {
             </Pill>
           ))}
         </PillRow>
+        <div className="px-1 mt-2 text-[11px] text-ink-muted">
+          {value.equipment.length} selected · tap to toggle
+        </div>
       </Group>
 
       <Group label="Time Cap">

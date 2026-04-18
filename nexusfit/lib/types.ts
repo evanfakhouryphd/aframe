@@ -123,7 +123,7 @@ export interface GeneratedWorkout {
   format: Format;
   type: WorkoutType;
   intensity: Intensity;
-  equipmentSet: EquipmentSet;
+  equipmentSets: EquipmentSet[];
   timeCapMinutes: number;
   // Format-specific config used by the timer.
   config: WorkoutConfig;
@@ -160,6 +160,6 @@ export type WorkoutConfig =
 export interface FilterState {
   intensity: Intensity;
   type: WorkoutType;
-  equipment: EquipmentSet;
+  equipment: EquipmentSet[];
   timeCapMinutes: number;
 }

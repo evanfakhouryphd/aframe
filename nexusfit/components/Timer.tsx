@@ -3,18 +3,21 @@
 import { cn } from "@/lib/cn";
 import type { GeneratedWorkout, WorkoutConfig } from "@/lib/types";
 import { Pause, Play, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   workout: GeneratedWorkout;
+  onRunningChange?: (running: boolean) => void;
 }
 
 // Per-format timer. The data model already encodes everything we need.
-export function Timer({ workout }: Props) {
+export function Timer({ workout, onRunningChange }: Props) {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef<number | null>(null);
   const offsetRef = useRef(0);
+  const onRunningChangeRef = useRef(onRunningChange);
+  onRunningChangeRef.current = onRunningChange;
 
   useEffect(() => {
     if (!running) return;
@@ -35,6 +38,7 @@ export function Timer({ workout }: Props) {
     setElapsed(0);
     startRef.current = null;
     offsetRef.current = 0;
+    onRunningChangeRef.current?.(false);
   }, [workout.id]);
 
   const phase = derivePhase(workout.config, elapsed);
@@ -44,8 +48,10 @@ export function Timer({ workout }: Props) {
       offsetRef.current = elapsed;
       startRef.current = null;
       setRunning(false);
+      onRunningChangeRef.current?.(false);
     } else {
       setRunning(true);
+      onRunningChangeRef.current?.(true);
     }
   }
 
@@ -54,20 +60,28 @@ export function Timer({ workout }: Props) {
     setElapsed(0);
     startRef.current = null;
     offsetRef.current = 0;
+    onRunningChangeRef.current?.(false);
   }
 
   return (
     <div className="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark p-5 sm:p-6">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <div className="text-[11px] uppercase tracking-widest text-ink-muted">
+      <div className="flex items-baseline justify-between gap-4">
+        <div className="min-w-0">
+          <div
+            className={cn(
+              "text-[11px] uppercase tracking-widest",
+              phase.accent === "work"
+                ? "text-red-500 dark:text-red-400"
+                : "text-ink-muted"
+            )}
+          >
             {phase.label}
           </div>
           <div className="text-[64px] sm:text-[80px] leading-none font-semibold tabular-nums tracking-tightest mt-1">
             {phase.display}
           </div>
         </div>
-        <div className="text-right text-xs text-ink-muted">
+        <div className="text-right text-xs text-ink-muted shrink-0">
           <div>Elapsed</div>
           <div className="text-base font-medium tabular-nums text-ink dark:text-ink-dark">
             {fmt(elapsed)}
@@ -77,6 +91,24 @@ export function Timer({ workout }: Props) {
 
       {phase.subline && (
         <div className="mt-3 text-sm text-ink-muted">{phase.subline}</div>
+      )}
+
+      {phase.stats && phase.stats.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {phase.stats.map((s) => (
+            <div
+              key={s.label}
+              className="rounded-xl border border-border dark:border-border-dark px-3 py-2"
+            >
+              <div className="text-[10px] uppercase tracking-widest text-ink-muted">
+                {s.label}
+              </div>
+              <div className="text-base font-medium tabular-nums text-ink dark:text-ink-dark mt-0.5">
+                {s.value}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="mt-6 flex items-center gap-3">
@@ -115,6 +147,8 @@ interface Phase {
   label: string;
   display: string;
   subline?: string;
+  stats?: { label: string; value: string }[];
+  accent?: "work" | "rest" | "neutral";
 }
 
 function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
@@ -125,11 +159,13 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
         label: `AMRAP — ${config.durationSec / 60} min`,
         display: fmt(remaining),
         subline: remaining === 0 ? "Time." : "Score = total rounds + reps",
+        stats: [{ label: "Elapsed", value: fmt(elapsed) }],
       };
     }
     case "for_time":
     case "chipper": {
       const cap = config.capSec;
+      const capLeft = cap ? Math.max(0, cap - elapsed) : 0;
       return {
         label: cap ? `Cap ${cap / 60} min` : "For Time",
         display: fmt(elapsed),
@@ -137,6 +173,7 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
           cap && elapsed >= cap
             ? "Cap reached."
             : "Score = elapsed time to finish",
+        stats: cap ? [{ label: "Cap left", value: fmt(capLeft) }] : undefined,
       };
     }
     case "emom": {
@@ -146,15 +183,24 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
       const remainingInMin = Math.max(0, 60 - inMinute);
       const station = ((minute - 1) % config.stations) + 1;
       const done = elapsed >= total;
+      const totalLeft = Math.max(0, total - elapsed);
       return {
         label: done ? "EMOM Complete" : `EMOM — Min ${minute} of ${config.minutes}`,
         display: done ? "0:00" : fmt(remainingInMin),
         subline: done ? "Time." : `Station ${station} of ${config.stations}`,
+        stats: done
+          ? undefined
+          : [
+              { label: "Round", value: `${minute}/${config.minutes}` },
+              { label: "Station", value: `${station}/${config.stations}` },
+              { label: "Total left", value: fmt(totalLeft) },
+            ],
       };
     }
     case "tabata": {
       const cycle = config.workSec + config.restSec;
       const totalCycles = config.rounds * config.movements;
+      const totalSec = cycle * totalCycles;
       const cycleIdx = Math.floor(elapsed / cycle);
       const inCycle = elapsed % cycle;
       const isWork = inCycle < config.workSec;
@@ -162,12 +208,14 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
         ? config.workSec - inCycle
         : cycle - inCycle;
       const done = cycleIdx >= totalCycles;
+      const round = Math.floor(cycleIdx / config.movements) + 1;
       const movementIdx = (cycleIdx % config.movements) + 1;
+      const totalLeft = Math.max(0, totalSec - elapsed);
       return {
         label: done
           ? "Tabata Complete"
           : isWork
-            ? `WORK — Round ${Math.floor(cycleIdx / config.movements) + 1}/${config.rounds}`
+            ? `WORK — Round ${round}/${config.rounds}`
             : "REST",
         display: done ? "0:00" : Math.ceil(remaining).toString(),
         subline: done
@@ -175,6 +223,17 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
           : config.movements > 1
             ? `Movement ${movementIdx} of ${config.movements}`
             : undefined,
+        accent: done ? "neutral" : isWork ? "work" : "rest",
+        stats: done
+          ? undefined
+          : [
+              { label: "Round", value: `${round}/${config.rounds}` },
+              {
+                label: "Movement",
+                value: `${movementIdx}/${config.movements}`,
+              },
+              { label: "Total left", value: fmt(totalLeft) },
+            ],
       };
     }
     case "ygig": {
@@ -184,17 +243,26 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
         display: fmt(elapsed),
         subline:
           cap && elapsed >= cap ? "Cap reached." : "Alternate full rounds",
+        stats: [
+          { label: "Target", value: `${config.rounds} rds` },
+          { label: "Partners", value: `${config.partners}` },
+          ...(cap
+            ? [{ label: "Cap left", value: fmt(Math.max(0, cap - elapsed)) }]
+            : []),
+        ],
       };
     }
     case "interval": {
       const cycle = config.workSec + config.restSec;
+      const totalSec = cycle * config.rounds;
       const round = Math.min(config.rounds, Math.floor(elapsed / cycle) + 1);
       const inCycle = elapsed % cycle;
       const isWork = inCycle < config.workSec;
       const remaining = isWork
         ? config.workSec - inCycle
         : cycle - inCycle;
-      const done = elapsed >= cycle * config.rounds;
+      const done = elapsed >= totalSec;
+      const totalLeft = Math.max(0, totalSec - elapsed);
       return {
         label: done
           ? "Intervals Complete"
@@ -202,6 +270,14 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
             ? `WORK — Round ${round}/${config.rounds}`
             : `REST — Round ${round}/${config.rounds}`,
         display: done ? "0:00" : fmt(Math.ceil(remaining)),
+        accent: done ? "neutral" : isWork ? "work" : "rest",
+        stats: done
+          ? undefined
+          : [
+              { label: "Round", value: `${round}/${config.rounds}` },
+              { label: "Phase", value: isWork ? "Work" : "Rest" },
+              { label: "Total left", value: fmt(totalLeft) },
+            ],
       };
     }
     case "strength": {
@@ -211,35 +287,51 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
         config.mainRestSec >= 60
           ? `${Math.round(config.mainRestSec / 60)} min`
           : `${config.mainRestSec}s`;
+      const accRestLabel =
+        config.accessoryRestSec >= 60
+          ? `${Math.round(config.accessoryRestSec / 60)} min`
+          : `${config.accessoryRestSec}s`;
       return {
         label: "Strength",
         display: fmt(elapsed),
-        subline: `Rest target: ${restLabel} between main-lift sets`,
+        subline: "Rest as needed between working sets",
+        stats: [
+          { label: "Main rest", value: restLabel },
+          { label: "Accessory", value: accRestLabel },
+        ],
       };
     }
     case "sc_couplet": {
       const strengthSec = config.strengthMinutes * 60;
       const inStrength = elapsed < strengthSec;
       const condElapsed = Math.max(0, elapsed - strengthSec);
-      const condRemaining = Math.max(
-        0,
-        config.conditioningMinutes * 60 - condElapsed
-      );
+      const condSec = config.conditioningMinutes * 60;
+      const condRemaining = Math.max(0, condSec - condElapsed);
       const done = elapsed >= config.capSec;
+      const sessionLeft = Math.max(0, config.capSec - elapsed);
       if (done) {
         return { label: "S&C Complete", display: "0:00", subline: "Time." };
       }
       if (inStrength) {
+        const blockLeft = Math.max(0, strengthSec - elapsed);
         return {
           label: `Strength block — ${config.strengthMinutes} min`,
-          display: fmt(strengthSec - elapsed),
+          display: fmt(blockLeft),
           subline: "Work the main lift, then move to conditioning",
+          stats: [
+            { label: "Block left", value: fmt(blockLeft) },
+            { label: "Session left", value: fmt(sessionLeft) },
+          ],
         };
       }
       return {
         label: `Conditioning block — ${config.conditioningMinutes} min AMRAP`,
         display: fmt(condRemaining),
         subline: "Score = rounds + reps",
+        stats: [
+          { label: "Block left", value: fmt(condRemaining) },
+          { label: "Session left", value: fmt(sessionLeft) },
+        ],
       };
     }
   }

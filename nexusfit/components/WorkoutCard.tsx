@@ -4,7 +4,6 @@ import { swapMovement, workoutToText } from "@/lib/engine";
 import type { GeneratedWorkout } from "@/lib/types";
 import { Check, Copy, Repeat } from "lucide-react";
 import { useState } from "react";
-import { Timer } from "./Timer";
 
 interface Props {
   workout: GeneratedWorkout;
@@ -34,9 +33,7 @@ export function WorkoutCard({ workout, onWorkoutChange }: Props) {
   }
 
   return (
-    <div className="space-y-5 animate-slide-up">
-      <Timer workout={workout} />
-
+    <div className="animate-slide-up">
       <div className="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark overflow-hidden">
         <div className="px-5 sm:px-6 pt-6 pb-5 border-b border-border dark:border-border-dark">
           <div className="flex items-start justify-between gap-3">
