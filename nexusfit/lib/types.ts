@@ -29,19 +29,24 @@ export type Equipment =
   | "rower"
   | "bike_erg"
   | "ski_erg"
+  | "airbike"
   | "treadmill"
-  | "sled"
   | "wallball"
   | "box"
   | "jump_rope"
   | "bodyweight"
-  | "rig";
+  | "rig"
+  | "bench";
 
 export type EquipmentSet =
   | "full_gym"
   | "kettlebell_only"
   | "dumbbell_only"
-  | "bodyweight_travel";
+  | "bodyweight_travel"
+  | "rower_only"
+  | "ski_only"
+  | "bike_only"
+  | "airbike_only";
 
 export type Intensity =
   | "recovery"
@@ -49,7 +54,22 @@ export type Intensity =
   | "threshold"
   | "max_effort";
 
-export type WorkoutType = "crossfit" | "hyrox" | "strength_conditioning";
+export type WorkoutType =
+  | "crossfit"
+  | "hyrox"
+  | "strength_conditioning"
+  | "strength";
+
+// Rep schemes used in true strength sessions.
+// "3RM" means "working sets at 3-rep-max" = heavy triples.
+export type RepScheme =
+  | "1RM"
+  | "3RM"
+  | "5RM"
+  | "8RM"
+  | "12RM"
+  | "20RM"
+  | "amrap_set";
 
 export type Format =
   | "amrap"
@@ -58,7 +78,9 @@ export type Format =
   | "chipper"
   | "tabata"
   | "ygig"
-  | "interval";
+  | "interval"
+  | "strength"
+  | "sc_couplet";
 
 export type RepUnit = "reps" | "m" | "cal" | "sec";
 
@@ -90,6 +112,9 @@ export interface GeneratedSegment {
   reps: number;
   unit: RepUnit;
   loadHint?: string;
+  // Optional strength-specific display, e.g. { sets: 5, scheme: "5RM" }.
+  // When present, the UI renders "5 × Back Squat @ 5RM" instead of a rep count.
+  strengthSet?: { sets: number; scheme: RepScheme; restSec: number };
 }
 
 export interface GeneratedWorkout {
@@ -116,7 +141,21 @@ export type WorkoutConfig =
   | { format: "emom"; minutes: number; stations: number }
   | { format: "tabata"; rounds: number; workSec: number; restSec: number; movements: number }
   | { format: "ygig"; capSec: number; rounds: number; partners: number }
-  | { format: "interval"; rounds: number; workSec: number; restSec: number };
+  | { format: "interval"; rounds: number; workSec: number; restSec: number }
+  | {
+      format: "strength";
+      // Rest target between working sets of the main lift.
+      mainRestSec: number;
+      // Rest target between accessory supersets.
+      accessoryRestSec: number;
+    }
+  | {
+      format: "sc_couplet";
+      // Total session cap. Strength block runs first, then conditioning.
+      capSec: number;
+      strengthMinutes: number;
+      conditioningMinutes: number;
+    };
 
 export interface FilterState {
   intensity: Intensity;

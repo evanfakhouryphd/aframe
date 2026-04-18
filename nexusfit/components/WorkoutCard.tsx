@@ -67,22 +67,48 @@ export function WorkoutCard({ workout, onWorkoutChange }: Props) {
               className="px-5 sm:px-6 py-4 flex items-center justify-between gap-3 group"
             >
               <div className="min-w-0">
-                <div className="flex items-baseline gap-3">
-                  <span className="text-2xl font-semibold tabular-nums tracking-tight">
-                    {s.reps}
-                  </span>
-                  <span className="text-xs uppercase tracking-widest text-ink-muted">
-                    {unitLabel(s.unit)}
-                  </span>
-                </div>
-                <div className="mt-0.5 truncate text-base">
-                  {s.movement.name}
-                  {s.loadHint && (
-                    <span className="ml-2 text-sm text-ink-muted">
-                      · {s.loadHint}
-                    </span>
-                  )}
-                </div>
+                {s.strengthSet ? (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-semibold tabular-nums tracking-tight">
+                        {s.strengthSet.sets} × {s.reps}
+                      </span>
+                      <span className="text-xs uppercase tracking-widest text-ink-muted">
+                        @ {s.strengthSet.scheme}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 truncate text-base">
+                      {s.movement.name}
+                      {s.loadHint && (
+                        <span className="ml-2 text-sm text-ink-muted">
+                          · {s.loadHint}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-xs text-ink-muted">
+                      Rest {formatRest(s.strengthSet.restSec)}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-2xl font-semibold tabular-nums tracking-tight">
+                        {s.reps}
+                      </span>
+                      <span className="text-xs uppercase tracking-widest text-ink-muted">
+                        {unitLabel(s.unit)}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 truncate text-base">
+                      {s.movement.name}
+                      {s.loadHint && (
+                        <span className="ml-2 text-sm text-ink-muted">
+                          · {s.loadHint}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => swap(i)}
@@ -108,7 +134,17 @@ export function WorkoutCard({ workout, onWorkoutChange }: Props) {
 function labelType(t: string) {
   if (t === "crossfit") return "CrossFit";
   if (t === "hyrox") return "HYROX";
+  if (t === "strength") return "Strength";
   return "Strength & Conditioning";
+}
+
+function formatRest(sec: number) {
+  if (sec >= 60) {
+    const m = Math.floor(sec / 60);
+    const r = sec % 60;
+    return r === 0 ? `${m} min` : `${m}:${r.toString().padStart(2, "0")}`;
+  }
+  return `${sec}s`;
 }
 
 function labelIntensity(i: string) {

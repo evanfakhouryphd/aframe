@@ -204,5 +204,43 @@ function derivePhase(config: WorkoutConfig, elapsed: number): Phase {
         display: done ? "0:00" : fmt(Math.ceil(remaining)),
       };
     }
+    case "strength": {
+      // Open timer: lifters rest however long they actually need. Show
+      // elapsed + the target rest between working sets as a reference.
+      const restLabel =
+        config.mainRestSec >= 60
+          ? `${Math.round(config.mainRestSec / 60)} min`
+          : `${config.mainRestSec}s`;
+      return {
+        label: "Strength",
+        display: fmt(elapsed),
+        subline: `Rest target: ${restLabel} between main-lift sets`,
+      };
+    }
+    case "sc_couplet": {
+      const strengthSec = config.strengthMinutes * 60;
+      const inStrength = elapsed < strengthSec;
+      const condElapsed = Math.max(0, elapsed - strengthSec);
+      const condRemaining = Math.max(
+        0,
+        config.conditioningMinutes * 60 - condElapsed
+      );
+      const done = elapsed >= config.capSec;
+      if (done) {
+        return { label: "S&C Complete", display: "0:00", subline: "Time." };
+      }
+      if (inStrength) {
+        return {
+          label: `Strength block — ${config.strengthMinutes} min`,
+          display: fmt(strengthSec - elapsed),
+          subline: "Work the main lift, then move to conditioning",
+        };
+      }
+      return {
+        label: `Conditioning block — ${config.conditioningMinutes} min AMRAP`,
+        display: fmt(condRemaining),
+        subline: "Score = rounds + reps",
+      };
+    }
   }
 }

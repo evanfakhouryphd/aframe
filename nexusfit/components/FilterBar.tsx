@@ -16,6 +16,9 @@ import {
   Footprints,
   Mountain,
   Target,
+  Waves,
+  Weight,
+  Wind,
   Zap,
   Plane,
 } from "lucide-react";
@@ -36,6 +39,7 @@ const TYPES: { id: WorkoutType; label: string; icon: React.ReactNode }[] = [
   { id: "crossfit", label: "CrossFit", icon: <Zap className="h-4 w-4" /> },
   { id: "hyrox", label: "HYROX", icon: <Footprints className="h-4 w-4" /> },
   { id: "strength_conditioning", label: "S & C", icon: <Mountain className="h-4 w-4" /> },
+  { id: "strength", label: "Strength", icon: <Weight className="h-4 w-4" /> },
 ];
 
 const EQUIPMENT: { id: EquipmentSet; label: string; icon: React.ReactNode }[] = [
@@ -43,6 +47,10 @@ const EQUIPMENT: { id: EquipmentSet; label: string; icon: React.ReactNode }[] = 
   { id: "kettlebell_only", label: "Kettlebell", icon: <Dumbbell className="h-4 w-4" /> },
   { id: "dumbbell_only", label: "Dumbbell", icon: <Dumbbell className="h-4 w-4" /> },
   { id: "bodyweight_travel", label: "Travel / BW", icon: <Plane className="h-4 w-4" /> },
+  { id: "rower_only", label: "Rower", icon: <Waves className="h-4 w-4" /> },
+  { id: "ski_only", label: "Ski Erg", icon: <Activity className="h-4 w-4" /> },
+  { id: "bike_only", label: "Bike Erg", icon: <Bike className="h-4 w-4" /> },
+  { id: "airbike_only", label: "Air Bike", icon: <Wind className="h-4 w-4" /> },
 ];
 
 const TIME_CAPS = [5, 10, 15, 20, 30, 45, 60];

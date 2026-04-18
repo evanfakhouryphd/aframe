@@ -2,6 +2,17 @@ import type { Movement } from "./types";
 
 // Curated movement library. Tagged so the engine can balance pulls/pushes,
 // upper/lower, and modality (M/G/W) within a session.
+//
+// `availableIn` gates a movement to specific equipment-set filters.
+// Cardio-only sets (rower_only / ski_only / bike_only / airbike_only) resolve
+// to that single machine plus bodyweight — no loaded movements.
+
+const ALL_CARDIO_ONLY = [
+  "rower_only",
+  "ski_only",
+  "bike_only",
+  "airbike_only",
+] as const;
 
 export const MOVEMENTS: Movement[] = [
   // ───────── Monostructural / Cardio ─────────
@@ -14,7 +25,7 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["rower"],
-    availableIn: ["full_gym"],
+    availableIn: ["full_gym", "rower_only"],
     hyroxStation: true,
     unit: "cal",
     repsByIntensity: {
@@ -34,7 +45,7 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["ski_erg"],
-    availableIn: ["full_gym"],
+    availableIn: ["full_gym", "ski_only"],
     hyroxStation: true,
     unit: "cal",
     repsByIntensity: {
@@ -54,7 +65,7 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["bike_erg"],
-    availableIn: ["full_gym"],
+    availableIn: ["full_gym", "bike_only"],
     unit: "cal",
     repsByIntensity: {
       recovery: [10, 15],
@@ -65,6 +76,25 @@ export const MOVEMENTS: Movement[] = [
     stimulusTags: ["cardio", "low_impact"],
   },
   {
+    id: "airbike",
+    name: "Air Bike",
+    modality: "M",
+    pattern: "locomotion",
+    region: "full",
+    impact: "low",
+    skill: 1,
+    equipment: ["airbike"],
+    availableIn: ["full_gym", "airbike_only"],
+    unit: "cal",
+    repsByIntensity: {
+      recovery: [8, 12],
+      aerobic: [10, 15],
+      threshold: [15, 25],
+      max_effort: [20, 30],
+    },
+    stimulusTags: ["cardio", "full_body", "high_output"],
+  },
+  {
     id: "run",
     name: "Run",
     modality: "M",
@@ -73,7 +103,11 @@ export const MOVEMENTS: Movement[] = [
     impact: "moderate",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      ...ALL_CARDIO_ONLY,
+    ],
     hyroxStation: true,
     unit: "m",
     repsByIntensity: {
@@ -93,7 +127,11 @@ export const MOVEMENTS: Movement[] = [
     impact: "high",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "m",
     repsByIntensity: {
       recovery: [40, 80],
@@ -133,7 +171,13 @@ export const MOVEMENTS: Movement[] = [
     impact: "high",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel", "kettlebell_only", "dumbbell_only"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      "kettlebell_only",
+      "dumbbell_only",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "reps",
     repsByIntensity: {
       recovery: [5, 10],
@@ -210,7 +254,13 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel", "kettlebell_only", "dumbbell_only"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      "kettlebell_only",
+      "dumbbell_only",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "reps",
     repsByIntensity: {
       recovery: [8, 12],
@@ -286,7 +336,13 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel", "kettlebell_only", "dumbbell_only"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      "kettlebell_only",
+      "dumbbell_only",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "reps",
     repsByIntensity: {
       recovery: [15, 25],
@@ -324,7 +380,11 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "reps",
     repsByIntensity: {
       recovery: [10, 16],
@@ -375,7 +435,127 @@ export const MOVEMENTS: Movement[] = [
     stimulusTags: ["squat", "full_body", "push"],
   },
 
-  // ───────── Weightlifting — Barbell ─────────
+  // ───────── Powerlifting / Strength — Barbell ─────────
+  {
+    id: "back_squat",
+    name: "Back Squat",
+    modality: "W",
+    pattern: "squat",
+    region: "lower",
+    impact: "low",
+    skill: 3,
+    equipment: ["barbell"],
+    availableIn: ["full_gym"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [15, 20],
+      aerobic: [10, 12],
+      threshold: [5, 8],
+      max_effort: [1, 5],
+    },
+    loadHint: "heavy",
+    stimulusTags: ["squat", "lower", "strength", "main_lift"],
+  },
+  {
+    id: "bench_press",
+    name: "Bench Press",
+    modality: "W",
+    pattern: "push",
+    region: "upper",
+    impact: "low",
+    skill: 3,
+    equipment: ["barbell", "bench"],
+    availableIn: ["full_gym"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 12],
+      threshold: [3, 5],
+      max_effort: [1, 3],
+    },
+    loadHint: "heavy",
+    stimulusTags: ["push", "upper", "horizontal_push", "strength", "main_lift"],
+  },
+  {
+    id: "strict_press",
+    name: "Strict Press",
+    modality: "W",
+    pattern: "push",
+    region: "upper",
+    impact: "low",
+    skill: 3,
+    equipment: ["barbell"],
+    availableIn: ["full_gym"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [10, 12],
+      aerobic: [6, 10],
+      threshold: [3, 5],
+      max_effort: [1, 3],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["push", "upper", "vertical_push", "strength", "main_lift"],
+  },
+  {
+    id: "pendlay_row",
+    name: "Pendlay Rows",
+    modality: "W",
+    pattern: "pull",
+    region: "upper",
+    impact: "low",
+    skill: 3,
+    equipment: ["barbell"],
+    availableIn: ["full_gym"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [10, 12],
+      aerobic: [6, 10],
+      threshold: [4, 6],
+      max_effort: [3, 5],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["pull", "upper", "horizontal_pull", "strength"],
+  },
+  {
+    id: "romanian_deadlift",
+    name: "Romanian Deadlift",
+    modality: "W",
+    pattern: "hinge",
+    region: "full",
+    impact: "low",
+    skill: 3,
+    equipment: ["barbell"],
+    availableIn: ["full_gym"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 10],
+      threshold: [5, 8],
+      max_effort: [3, 5],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["hinge", "posterior", "strength"],
+  },
+  {
+    id: "good_morning",
+    name: "Good Mornings",
+    modality: "W",
+    pattern: "hinge",
+    region: "full",
+    impact: "low",
+    skill: 3,
+    equipment: ["barbell"],
+    availableIn: ["full_gym"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 12],
+      threshold: [5, 8],
+      max_effort: [3, 6],
+    },
+    loadHint: "moderate",
+    stimulusTags: ["hinge", "posterior", "accessory"],
+  },
   {
     id: "deadlift",
     name: "Deadlifts",
@@ -388,13 +568,13 @@ export const MOVEMENTS: Movement[] = [
     availableIn: ["full_gym"],
     unit: "reps",
     repsByIntensity: {
-      recovery: [5, 8],
+      recovery: [10, 12],
       aerobic: [6, 10],
-      threshold: [8, 12],
-      max_effort: [3, 8],
+      threshold: [3, 5],
+      max_effort: [1, 3],
     },
-    loadHint: "moderate-heavy",
-    stimulusTags: ["hinge", "pull", "posterior"],
+    loadHint: "heavy",
+    stimulusTags: ["hinge", "pull", "posterior", "strength", "main_lift"],
   },
   {
     id: "power_clean",
@@ -448,13 +628,13 @@ export const MOVEMENTS: Movement[] = [
     availableIn: ["full_gym"],
     unit: "reps",
     repsByIntensity: {
-      recovery: [5, 8],
-      aerobic: [6, 10],
-      threshold: [8, 12],
-      max_effort: [3, 6],
+      recovery: [12, 15],
+      aerobic: [8, 10],
+      threshold: [5, 6],
+      max_effort: [1, 3],
     },
-    loadHint: "moderate-heavy",
-    stimulusTags: ["squat", "lower"],
+    loadHint: "heavy",
+    stimulusTags: ["squat", "lower", "strength", "main_lift"],
   },
   {
     id: "shoulder_to_oh",
@@ -498,6 +678,86 @@ export const MOVEMENTS: Movement[] = [
   },
 
   // ───────── Weightlifting — Dumbbell ─────────
+  {
+    id: "db_bench_press",
+    name: "DB Bench Press",
+    modality: "W",
+    pattern: "push",
+    region: "upper",
+    impact: "low",
+    skill: 2,
+    equipment: ["dumbbell", "bench"],
+    availableIn: ["full_gym", "dumbbell_only"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 12],
+      threshold: [5, 8],
+      max_effort: [3, 5],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["push", "upper", "horizontal_push", "strength", "main_lift"],
+  },
+  {
+    id: "db_row",
+    name: "DB Rows",
+    modality: "W",
+    pattern: "pull",
+    region: "upper",
+    impact: "low",
+    skill: 2,
+    equipment: ["dumbbell"],
+    availableIn: ["full_gym", "dumbbell_only"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 12],
+      threshold: [6, 10],
+      max_effort: [5, 8],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["pull", "upper", "horizontal_pull", "strength"],
+  },
+  {
+    id: "db_rdl",
+    name: "DB Romanian Deadlift",
+    modality: "W",
+    pattern: "hinge",
+    region: "full",
+    impact: "low",
+    skill: 2,
+    equipment: ["dumbbell"],
+    availableIn: ["full_gym", "dumbbell_only"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [10, 12],
+      threshold: [8, 10],
+      max_effort: [5, 8],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["hinge", "posterior", "strength"],
+  },
+  {
+    id: "db_goblet_squat",
+    name: "DB Goblet Squats",
+    modality: "W",
+    pattern: "squat",
+    region: "lower",
+    impact: "low",
+    skill: 1,
+    equipment: ["dumbbell"],
+    availableIn: ["full_gym", "dumbbell_only"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [10, 12],
+      threshold: [6, 10],
+      max_effort: [5, 8],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["squat", "lower", "strength", "main_lift"],
+  },
   {
     id: "db_snatch",
     name: "DB Snatches (alternating)",
@@ -602,6 +862,46 @@ export const MOVEMENTS: Movement[] = [
 
   // ───────── Weightlifting — Kettlebell ─────────
   {
+    id: "kb_front_squat",
+    name: "KB Front Squat (double)",
+    modality: "W",
+    pattern: "squat",
+    region: "lower",
+    impact: "low",
+    skill: 2,
+    equipment: ["kettlebell"],
+    availableIn: ["full_gym", "kettlebell_only"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 12],
+      threshold: [5, 8],
+      max_effort: [3, 6],
+    },
+    loadHint: "2×53/35 lb",
+    stimulusTags: ["squat", "lower", "strength", "main_lift"],
+  },
+  {
+    id: "kb_floor_press",
+    name: "KB Floor Press",
+    modality: "W",
+    pattern: "push",
+    region: "upper",
+    impact: "low",
+    skill: 2,
+    equipment: ["kettlebell"],
+    availableIn: ["full_gym", "kettlebell_only"],
+    unit: "reps",
+    repsByIntensity: {
+      recovery: [12, 15],
+      aerobic: [8, 12],
+      threshold: [5, 8],
+      max_effort: [3, 6],
+    },
+    loadHint: "moderate-heavy",
+    stimulusTags: ["push", "upper", "horizontal_push", "strength", "main_lift"],
+  },
+  {
     id: "kb_swing",
     name: "KB Swings (American)",
     modality: "W",
@@ -702,49 +1002,7 @@ export const MOVEMENTS: Movement[] = [
     stimulusTags: ["core", "skill", "stability"],
   },
 
-  // ───────── HYROX-specific accessory ─────────
-  {
-    id: "sled_push",
-    name: "Sled Push",
-    modality: "W",
-    pattern: "push",
-    region: "lower",
-    impact: "low",
-    skill: 1,
-    equipment: ["sled"],
-    availableIn: ["full_gym"],
-    hyroxStation: true,
-    unit: "m",
-    repsByIntensity: {
-      recovery: [10, 20],
-      aerobic: [20, 40],
-      threshold: [25, 50],
-      max_effort: [25, 50],
-    },
-    loadHint: "heavy",
-    stimulusTags: ["push", "lower", "carry"],
-  },
-  {
-    id: "sled_pull",
-    name: "Sled Pull",
-    modality: "W",
-    pattern: "pull",
-    region: "full",
-    impact: "low",
-    skill: 1,
-    equipment: ["sled"],
-    availableIn: ["full_gym"],
-    hyroxStation: true,
-    unit: "m",
-    repsByIntensity: {
-      recovery: [10, 20],
-      aerobic: [20, 40],
-      threshold: [25, 50],
-      max_effort: [25, 50],
-    },
-    loadHint: "heavy",
-    stimulusTags: ["pull", "horizontal_pull", "carry"],
-  },
+  // ───────── Carries ─────────
   {
     id: "farmers_carry",
     name: "Farmer's Carry",
@@ -777,7 +1035,13 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel", "kettlebell_only", "dumbbell_only"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      "kettlebell_only",
+      "dumbbell_only",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "reps",
     repsByIntensity: {
       recovery: [15, 25],
@@ -796,7 +1060,13 @@ export const MOVEMENTS: Movement[] = [
     impact: "low",
     skill: 1,
     equipment: ["bodyweight"],
-    availableIn: ["full_gym", "bodyweight_travel", "kettlebell_only", "dumbbell_only"],
+    availableIn: [
+      "full_gym",
+      "bodyweight_travel",
+      "kettlebell_only",
+      "dumbbell_only",
+      ...ALL_CARDIO_ONLY,
+    ],
     unit: "sec",
     repsByIntensity: {
       recovery: [30, 45],
@@ -815,3 +1085,12 @@ export const MOVEMENT_BY_ID: Record<string, Movement> = MOVEMENTS.reduce(
   },
   {} as Record<string, Movement>
 );
+
+// Tag-based lookups used by the engine.
+export function isMainLift(m: Movement): boolean {
+  return m.stimulusTags.includes("main_lift");
+}
+
+export function isCardio(m: Movement): boolean {
+  return m.modality === "M" || m.stimulusTags.includes("cardio");
+}
