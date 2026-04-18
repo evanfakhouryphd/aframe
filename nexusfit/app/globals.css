@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body {
+  height: 100%;
+  background: theme("colors.bg.DEFAULT");
+  color: theme("colors.ink.DEFAULT");
+}
+
+html.dark,
+html.dark body {
+  background: theme("colors.bg.dark");
+  color: theme("colors.ink.dark");
+}
+
+::selection {
+  background: theme("colors.accent.DEFAULT");
+  color: white;
+}
+
+/* Subtle grid background for dark mode hero */
+.grain {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 0
+  );
+  background-size: 18px 18px;
+}
+
+/* Hide scrollbars in horizontal pill rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Tap highlight removal for mobile */
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
