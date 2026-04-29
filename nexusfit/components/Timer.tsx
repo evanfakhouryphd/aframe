@@ -408,5 +408,21 @@ function derivePhase(
         ],
       };
     }
+    case "rep_ladder": {
+      const cap = config.capSec;
+      const remaining = Math.max(0, cap - elapsed);
+      return {
+        label: `${config.label}`,
+        display: fmt(elapsed),
+        subline:
+          elapsed >= cap
+            ? "Cap reached."
+            : "Score = elapsed time to finish",
+        stats: [
+          { label: "Rounds", value: `${config.reps.length}` },
+          { label: "Cap left", value: fmt(remaining) },
+        ],
+      };
+    }
   }
 }

@@ -79,7 +79,8 @@ export type Format =
   | "tabata"
   | "ygig"
   | "interval"
-  | "strength";
+  | "strength"
+  | "rep_ladder";
 
 export type RepUnit = "reps" | "m" | "cal" | "sec";
 
@@ -162,6 +163,15 @@ export type WorkoutConfig =
       // Rest target between working sets.
       mainRestSec: number;
       accessoryRestSec: number;
+    }
+  | {
+      format: "rep_ladder";
+      // Total cap; ladder is task-priority.
+      capSec: number;
+      // Reps per round, e.g. [21, 15, 9] or [50, 40, 30, 20, 10].
+      reps: number[];
+      // Display label, e.g. "21-15-9".
+      label: string;
     };
 
 export interface FilterState {

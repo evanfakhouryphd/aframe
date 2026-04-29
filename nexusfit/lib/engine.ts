@@ -69,24 +69,28 @@ function eligible(
   });
 }
 
-function slotsForFormat(format: Format, blockMin: number): number {
+function slotsForFormat(format: Format, blockMin: number, rand: () => number): number {
   switch (format) {
     case "amrap":
-      return blockMin <= 8 ? 3 : blockMin <= 14 ? 4 : 5;
+      // Couplet, triplet, or larger AMRAP.
+      return blockMin <= 8 ? pick([2, 3], rand) : blockMin <= 16 ? pick([3, 4], rand) : pick([3, 4, 5], rand);
     case "for_time":
-      return blockMin <= 8 ? 3 : blockMin <= 15 ? 4 : 5;
+      return blockMin <= 8 ? pick([2, 3], rand) : blockMin <= 15 ? pick([3, 4], rand) : pick([3, 4, 5], rand);
     case "chipper":
-      return Math.max(4, Math.min(6, Math.round(blockMin / 2.5)));
+      return pick([5, 6, 7], rand);
     case "emom":
-      return Math.min(4, Math.max(3, Math.round(blockMin / 3)));
+      // Often alternating stations: 2-4 movements rotating each minute.
+      return pick([2, 3, 4], rand);
     case "tabata":
-      return blockMin <= 4 ? 1 : 2;
+      return blockMin <= 4 ? 1 : pick([1, 2], rand);
     case "ygig":
-      return 4;
+      return pick([3, 4], rand);
     case "interval":
-      return blockMin <= 10 ? 3 : 4;
+      return blockMin <= 10 ? pick([2, 3], rand) : pick([3, 4], rand);
+    case "rep_ladder":
+      // Couplet (Fran/Diane) or triplet (Elizabeth, Karen+).
+      return pick([2, 2, 3], rand);
     case "strength":
-      // Filled by the strength block builder directly.
       return 0;
   }
 }
@@ -173,17 +177,44 @@ function scoreCandidate(
   return score;
 }
 
+// Classic CrossFit rep ladders. Each is a real-world template.
+const LADDER_TEMPLATES: { reps: number[]; label: string }[] = [
+  { reps: [21, 15, 9], label: "21-15-9" },
+  { reps: [21, 18, 15, 12, 9, 6, 3], label: "21-18...3" },
+  { reps: [50, 40, 30, 20, 10], label: "50-40-30-20-10" },
+  { reps: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1], label: "10 down to 1" },
+  { reps: [15, 12, 9, 6, 3], label: "15-12-9-6-3" },
+  { reps: [20, 16, 12, 8, 4], label: "20-16-12-8-4" },
+  { reps: [30, 20, 10], label: "30-20-10" },
+  { reps: [9, 15, 21], label: "9-15-21 (ascending)" },
+];
+
+function pickLadder(blockMin: number, rand: () => number): { reps: number[]; label: string } {
+  // Bias toward shorter ladders for short blocks, longer for long blocks.
+  const candidates =
+    blockMin <= 8
+      ? LADDER_TEMPLATES.filter((t) => t.reps.length <= 5)
+      : blockMin <= 15
+        ? LADDER_TEMPLATES.filter((t) => t.reps.length <= 7)
+        : LADDER_TEMPLATES;
+  return pick(candidates, rand);
+}
+
 function buildConfig(
   format: Format,
   blockMin: number,
-  intensity: Intensity
+  intensity: Intensity,
+  rand: () => number
 ): WorkoutConfig {
   const capSec = blockMin * 60;
   switch (format) {
     case "amrap":
       return { format: "amrap", durationSec: capSec };
     case "for_time": {
-      const rounds = blockMin <= 8 ? 3 : blockMin <= 15 ? 5 : 7;
+      const rounds = pick(
+        blockMin <= 8 ? [3, 4] : blockMin <= 15 ? [4, 5] : [5, 6, 7],
+        rand
+      );
       return { format: "for_time", capSec, rounds };
     }
     case "chipper":
@@ -192,7 +223,7 @@ function buildConfig(
       return {
         format: "emom",
         minutes: blockMin,
-        stations: Math.min(4, Math.max(2, Math.round(blockMin / 3))),
+        stations: pick([2, 3, 4], rand),
       };
     case "tabata":
       return {
@@ -200,23 +231,39 @@ function buildConfig(
         rounds: 8,
         workSec: 20,
         restSec: 10,
-        movements: blockMin <= 4 ? 1 : 2,
+        movements: blockMin <= 4 ? 1 : pick([1, 2], rand),
       };
     case "ygig":
       return {
         format: "ygig",
         capSec,
         partners: 2,
-        rounds: blockMin <= 15 ? 5 : 8,
+        rounds: pick(blockMin <= 15 ? [4, 5] : [6, 8, 10], rand),
       };
     case "interval": {
-      const rounds = Math.max(4, Math.round(blockMin / 3));
+      const profile = pick(
+        [
+          { workSec: 60, restSec: 30 },
+          { workSec: 90, restSec: 30 },
+          { workSec: 30, restSec: 30 },
+          { workSec: 45, restSec: 15 },
+        ],
+        rand
+      );
+      const rounds = Math.max(
+        4,
+        Math.floor((blockMin * 60) / (profile.workSec + profile.restSec))
+      );
       return {
         format: "interval",
         rounds,
-        workSec: 60,
-        restSec: 30,
+        workSec: profile.workSec,
+        restSec: profile.restSec,
       };
+    }
+    case "rep_ladder": {
+      const { reps, label } = pickLadder(blockMin, rand);
+      return { format: "rep_ladder", capSec, reps, label };
     }
     case "strength":
       return {
@@ -258,8 +305,14 @@ function buildStructure(
       return `Tabata — 8 × (20s on / 10s off)`;
     case "ygig":
       return `YGIG — ${(config as { rounds: number }).rounds} rounds, 2-person`;
-    case "interval":
-      return `Intervals — ${(config as { rounds: number }).rounds} × (60s on / 30s off)`;
+    case "interval": {
+      const c = config as { rounds: number; workSec: number; restSec: number };
+      return `Intervals — ${c.rounds} × (${c.workSec}s on / ${c.restSec}s off)`;
+    }
+    case "rep_ladder": {
+      const c = config as { label: string };
+      return `${c.label} reps for time · ${blockMin} min cap`;
+    }
     case "strength":
       return `Strength`;
   }
@@ -270,15 +323,20 @@ function adjustRepsForFormat(
   format: Format,
   unit: "reps" | "m" | "cal" | "sec"
 ): number {
+  // Rep-ladder reps come from the ladder template, not the segment reps field.
+  if (format === "rep_ladder") return 0;
   if (unit === "sec") return base;
   let mult = 1;
   if (format === "chipper") mult = 2.4;
-  else if (format === "amrap") mult = 0.7;
-  else if (format === "emom") mult = 0.55;
+  else if (format === "amrap") mult = 0.75;
+  else if (format === "emom") mult = 0.6;
   else if (format === "tabata") mult = 0.5;
   else if (format === "interval") mult = 0.9;
-  const v = Math.max(1, Math.round(base * mult));
+  // Add ±15 % jitter so the same intensity doesn't always land on the same number.
+  const jitter = 0.85 + Math.random() * 0.3;
+  const v = Math.max(1, Math.round(base * mult * jitter));
   if (unit === "m") return Math.max(50, Math.round(v / 50) * 50);
+  if (unit === "cal") return Math.max(3, v);
   return v;
 }
 
@@ -326,9 +384,18 @@ function buildTitle(_type: WorkoutType, rand: () => number) {
 
 const BLOCK_LABELS = ["A", "B", "C", "D"];
 
-function blockCount(capMin: number): number {
-  if (capMin <= 15) return 2;
-  return 3;
+function blockCount(capMin: number, type: WorkoutType, rand: () => number): number {
+  // Strength sessions are always 3 blocks (main / accessory / finisher) when
+  // there's room.
+  if (type === "strength" || type === "strength_conditioning") {
+    return capMin >= 25 ? 3 : 2;
+  }
+  // CrossFit / HYROX: vary so it doesn't always feel the same.
+  if (capMin <= 8) return 1; // sprint / benchmark
+  if (capMin <= 14) return pick([1, 2], rand);
+  if (capMin <= 22) return pick([2, 2, 3], rand);
+  if (capMin <= 40) return pick([2, 3, 3], rand);
+  return pick([3, 3, 4], rand);
 }
 
 function blockFormatPlan(
@@ -338,28 +405,41 @@ function blockFormatPlan(
   rand: () => number
 ): Format[] {
   if (type === "strength") {
-    // Block A = main lift, Block B = accessory superset, Block C = short
-    // conditioning finisher (if there's room).
-    const finisher = pick<Format>(["amrap", "interval", "emom"], rand);
+    const finisher = pick<Format>(["amrap", "interval", "emom", "rep_ladder"], rand);
     return count >= 3 ? ["strength", "strength", finisher] : ["strength", "strength"];
   }
 
   if (type === "strength_conditioning") {
-    // A = main lift, B = conditioning AMRAP, C = interval/for-time finisher.
+    const second = pick<Format>(["amrap", "rep_ladder", "for_time"], rand);
     const third = pick<Format>(["interval", "for_time", "emom"], rand);
-    return count >= 3 ? ["strength", "amrap", third] : ["strength", "amrap"];
+    return count >= 3 ? ["strength", second, third] : ["strength", second];
   }
 
   if (type === "hyrox") {
-    const pool: Format[] = ["interval", "for_time", "chipper"];
+    // HYROX rotates run-style intervals + station for-time + station chipper.
+    const pool: Format[] = ["interval", "for_time", "chipper", "emom"];
     return shuffle(pool, rand).slice(0, count);
   }
 
-  // CrossFit
+  // CrossFit — wide format pool, biased to mix across blocks.
   if (capMin <= 6) return ["tabata"];
-  const pool: Format[] = ["amrap", "emom", "for_time", "interval"];
-  // Only use tabata as a finisher for short sessions.
-  if (capMin <= 12) pool.push("tabata");
+
+  // For 1-block workouts, prefer benchmark-style structures (rep ladders or
+  // single AMRAP/For Time).
+  if (count === 1) {
+    return [
+      pick<Format>(
+        capMin <= 10
+          ? ["rep_ladder", "for_time", "amrap"]
+          : ["rep_ladder", "amrap", "for_time", "chipper"],
+        rand
+      ),
+    ];
+  }
+
+  const pool: Format[] = ["amrap", "emom", "for_time", "interval", "rep_ladder"];
+  if (capMin <= 14) pool.push("tabata");
+  if (capMin >= 25) pool.push("chipper");
   return shuffle(pool, rand).slice(0, count);
 }
 
@@ -395,7 +475,7 @@ function buildStrengthMainBlock(args: BuildBlockArgs): GeneratedBlock {
     });
   }
 
-  const config = buildConfig("strength", blockMin, filters.intensity);
+  const config = buildConfig("strength", blockMin, filters.intensity, rand);
   const durationSec = blockMin * 60;
   return {
     id: `blk_${label}_${Math.floor(rand() * 1e6)}`,
@@ -437,7 +517,7 @@ function buildStrengthAccessoryBlock(args: BuildBlockArgs): GeneratedBlock {
     label,
     title: "Accessory superset",
     format: "strength",
-    config: buildConfig("strength", blockMin, filters.intensity),
+    config: buildConfig("strength", blockMin, filters.intensity, rand),
     segments,
     structure: `3 × 8–12 · ${count} movements`,
     durationSec: blockMin * 60,
@@ -447,17 +527,19 @@ function buildStrengthAccessoryBlock(args: BuildBlockArgs): GeneratedBlock {
 
 function buildConditioningBlock(args: BuildBlockArgs): GeneratedBlock {
   const { format, filters, pool, fullPool, blockMin, rand, label, role } = args;
-  const slots = Math.max(3, Math.min(5, slotsForFormat(format, blockMin)));
+  const rawSlots = slotsForFormat(format, blockMin, rand);
+  const slots = Math.max(format === "rep_ladder" ? 2 : 2, Math.min(7, rawSlots));
 
   let workingPool = pool;
   if (workingPool.length < slots) workingPool = fullPool;
 
-  // For S&C conditioning blocks, force a cardio piece if available.
-  const forceCardio = role === "generic" || role === "finisher"
-    ? filters.type === "strength_conditioning" ||
+  // Force a cardio piece for HYROX, S&C conditioning, and most CrossFit
+  // blocks (a couplet without a cardio anchor feels like an accessory).
+  const forceCardio =
+    (role === "generic" || role === "finisher") &&
+    (filters.type === "strength_conditioning" ||
       filters.type === "hyrox" ||
-      (filters.type === "crossfit" && format !== "emom")
-    : false;
+      (filters.type === "crossfit" && format !== "emom" && format !== "rep_ladder"));
 
   let movements: Movement[];
   if (forceCardio) {
@@ -468,7 +550,6 @@ function buildConditioningBlock(args: BuildBlockArgs): GeneratedBlock {
     const others = fillSlots(other, Math.max(0, slots - cardioPick.length), filters.type, rand);
     movements = [...cardioPick, ...others];
     if (movements.length < slots) {
-      // Backfill from full pool.
       const more = fillSlots(
         workingPool.filter((m) => !movements.some((x) => x.id === m.id)),
         slots - movements.length,
@@ -477,11 +558,14 @@ function buildConditioningBlock(args: BuildBlockArgs): GeneratedBlock {
       );
       movements = [...movements, ...more];
     }
+  } else if (format === "rep_ladder" && slots === 2) {
+    // Classic couplet: bias toward push/pull or lift/cardio combos.
+    movements = pickCouplet(workingPool, filters.type, rand);
   } else {
     movements = fillSlots(workingPool, slots, filters.type, rand);
   }
 
-  const config = buildConfig(format, blockMin, filters.intensity);
+  const config = buildConfig(format, blockMin, filters.intensity, rand);
   const segments: GeneratedSegment[] = movements.map((m) => {
     const base = repsFor(m, filters.intensity, rand);
     const reps = adjustRepsForFormat(base, format, m.unit);
@@ -507,6 +591,42 @@ function buildConditioningBlock(args: BuildBlockArgs): GeneratedBlock {
   };
 }
 
+// Couplet picker — biases toward classic CrossFit pairings (push+pull,
+// lift+cardio, squat+gymnastic).
+function pickCouplet(
+  pool: Movement[],
+  type: WorkoutType,
+  rand: () => number
+): Movement[] {
+  const first = fillSlots(pool, 1, type, rand)[0];
+  if (!first) return [];
+  const remainder = pool.filter((m) => m.id !== first.id);
+  // Score "complement" — opposite pattern / different modality / different region.
+  const ranked = remainder
+    .map((m) => {
+      let score = 0;
+      if (m.pattern !== first.pattern) score += 3;
+      if (m.modality !== first.modality) score += 2;
+      if (m.region !== first.region) score += 1;
+      // Classic Fran/Diane shape: push paired with pull.
+      if (
+        (first.pattern === "push" && m.pattern === "pull") ||
+        (first.pattern === "pull" && m.pattern === "push")
+      ) {
+        score += 4;
+      }
+      // Lift + cardio.
+      if (first.modality === "W" && m.modality === "M") score += 2;
+      if (first.modality === "M" && m.modality === "W") score += 2;
+      return { m, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  if (ranked.length === 0) return [first];
+  const top = ranked.slice(0, Math.min(5, ranked.length));
+  const second = pick(top, rand).m;
+  return [first, second];
+}
+
 function titleForFormat(
   format: Format,
   blockMin: number,
@@ -527,6 +647,8 @@ function titleForFormat(
       return `YGIG · ${blockMin} min`;
     case "interval":
       return `${(config as { rounds: number }).rounds} Intervals`;
+    case "rep_ladder":
+      return `${(config as { label: string }).label}`;
     case "strength":
       return "Strength";
   }
@@ -579,7 +701,7 @@ export function generateWorkout(
   const rand = rng(seed);
   const fullPool = eligible(filters.equipment, filters.type, filters.intensity);
 
-  const count = blockCount(filters.timeCapMinutes);
+  const count = blockCount(filters.timeCapMinutes, filters.type, rand);
   const totalRest = (count - 1) * REST_BETWEEN_BLOCKS_SEC;
   const workSec = Math.max(
     60 * 6,
@@ -757,27 +879,36 @@ export function workoutToText(w: GeneratedWorkout): string {
     const b = w.blocks[i];
     lines.push(`── Block ${b.label} · ${b.title} ──`);
     lines.push(b.structure);
-    for (const s of b.segments) {
-      if (s.strengthSet) {
-        const { sets, scheme, restSec } = s.strengthSet;
+    if (b.format === "rep_ladder") {
+      const ladder = (b.config as { reps: number[]; label: string }).reps.join("-");
+      for (const s of b.segments) {
         lines.push(
-          `• ${sets} × ${s.reps} @ ${scheme}  ${s.movement.name}${
-            s.loadHint ? `  (${s.loadHint})` : ""
-          }  — rest ${fmtRest(restSec)}`
+          `• ${ladder}  ${s.movement.name}${s.loadHint ? `  (${s.loadHint})` : ""}`
         );
-        continue;
       }
-      const repsLabel =
-        s.unit === "m"
-          ? `${s.reps} m`
-          : s.unit === "cal"
-            ? `${s.reps} cal`
-            : s.unit === "sec"
-              ? `${s.reps} s`
-              : `${s.reps}`;
-      lines.push(
-        `• ${repsLabel}  ${s.movement.name}${s.loadHint ? `  (${s.loadHint})` : ""}`
-      );
+    } else {
+      for (const s of b.segments) {
+        if (s.strengthSet) {
+          const { sets, scheme, restSec } = s.strengthSet;
+          lines.push(
+            `• ${sets} × ${s.reps} @ ${scheme}  ${s.movement.name}${
+              s.loadHint ? `  (${s.loadHint})` : ""
+            }  — rest ${fmtRest(restSec)}`
+          );
+          continue;
+        }
+        const repsLabel =
+          s.unit === "m"
+            ? `${s.reps} m`
+            : s.unit === "cal"
+              ? `${s.reps} cal`
+              : s.unit === "sec"
+                ? `${s.reps} s`
+                : `${s.reps}`;
+        lines.push(
+          `• ${repsLabel}  ${s.movement.name}${s.loadHint ? `  (${s.loadHint})` : ""}`
+        );
+      }
     }
     if (b.restAfterSec > 0) {
       lines.push("");

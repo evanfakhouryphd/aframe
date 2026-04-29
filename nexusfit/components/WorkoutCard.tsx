@@ -105,7 +105,16 @@ function BlockCard({
 
       <ul className="divide-y divide-border dark:divide-border-dark">
         {block.segments.map((s, i) => (
-          <SegmentRow key={`${s.movementId}-${i}`} segment={s} onSwap={onSwap} />
+          <SegmentRow
+            key={`${s.movementId}-${i}`}
+            segment={s}
+            onSwap={onSwap}
+            ladderReps={
+              block.format === "rep_ladder"
+                ? (block.config as { reps: number[] }).reps
+                : undefined
+            }
+          />
         ))}
       </ul>
     </div>
@@ -115,14 +124,35 @@ function BlockCard({
 function SegmentRow({
   segment: s,
   onSwap,
+  ladderReps,
 }: {
   segment: GeneratedSegment;
   onSwap: (movementId: string) => void;
+  ladderReps?: number[];
 }) {
   return (
     <li className="px-5 sm:px-6 py-4 flex items-center justify-between gap-3 group">
       <div className="min-w-0">
-        {s.strengthSet ? (
+        {ladderReps ? (
+          <>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-2xl font-semibold tabular-nums tracking-tight">
+                {ladderReps.join("-")}
+              </span>
+              <span className="text-xs uppercase tracking-widest text-ink-muted">
+                reps · {s.unit === "reps" ? "" : unitLabel(s.unit)}
+              </span>
+            </div>
+            <div className="mt-0.5 truncate text-base">
+              {s.movement.name}
+              {s.loadHint && (
+                <span className="ml-2 text-sm text-ink-muted">
+                  · {s.loadHint}
+                </span>
+              )}
+            </div>
+          </>
+        ) : s.strengthSet ? (
           <>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-semibold tabular-nums tracking-tight">
